@@ -10,6 +10,7 @@ repository = "https://github.com/tomtomwombat/fastbloom/"
 keywords = ["bloom", "filter", "data-structures", "bloom-filter", "bloomfilter"]
 categories = ["data-structures", "caching", "algorithms"]
 readme = "README.md"
+exclude = ["benches/*"]
 
 [badges]
 maintenance = { status = "actively-developed"}
