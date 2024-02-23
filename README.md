@@ -71,7 +71,7 @@ Runtime comparison to other bloom filter crates:
 ### False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison false positive rate with other bloom filter crates:
-> ![bloom-crate-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/1043c30b-3de8-44ec-b868-88625c7aad09)
+> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/6d3bd507-604a-4ba6-90e0-15e024178bba)
 
 
 
@@ -80,7 +80,7 @@ Runtime comparison to other bloom filter crates:
 `fastbloom` scales very well.
 
 As the number of bits and set size increase, traditional bloom filters need to perform more hashes per item to keep false positive rates low. However, `fastbloom`'s optimal number of hashes is bounded while keeping near zero rates even for many items:
-> ![bloom_perf](https://github.com/thomaspendock/bloom-filter/assets/45644087/ebe424cf-d8f1-4401-ac10-a4879123565f)
+> ![bloom-scaling](https://github.com/tomtomwombat/fastbloom/assets/45644087/f00607d6-1313-4296-aef2-9b86815eeba7)
 >
 > Bloom filter speed is directly proportional to number of hashes.
 
