@@ -297,7 +297,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// First, we'll think of the real 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
     ///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
     /// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
-    /// For h1, we'll use the orginal upper bits 32 of the real hash.
+    /// For h1, we'll use the original upper bits 32 of the real hash.
     ///     - h1 is the same as the real hash
     /// For h2 we'll use lower 32 bits of h, and multiply by a large prime
     ///     - h2 is basically a "weak hash" of h1
@@ -377,7 +377,7 @@ mod tests {
         let sample_vals = random_strings(size, 16, 32, 53226);
         let block_size = bloom_size_bytes * 8;
         for x in 0u8..4 {
-            let seed = [x; 16];
+            let seed = x as u128;
             let filter1 = BloomFilter::builder(block_size)
                 .seed(&seed)
                 .items(sample_vals.iter());
@@ -414,7 +414,7 @@ mod tests {
                 let num_bits = bloom_size_bytes * 8;
                 let sample_vals = random_strings(size, 16, 32, 5234);
                 let filter = BloomFilter::builder512(num_bits)
-                    .seed(&[1u8; 16])
+                    .seed(&1)
                     .items(sample_vals.iter());
                 let control: HashSet<String> = sample_vals.into_iter().collect();
 
@@ -479,7 +479,7 @@ mod tests {
             assert_even_distribution(&buckets, 0.05);
         }
         let num_bits = 10000;
-        let seed = [0; 16];
+        let seed = 0;
         block_hash_distribution_::<512>(BloomFilter::builder512(num_bits).seed(&seed).hashes(1));
         block_hash_distribution_::<256>(BloomFilter::builder256(num_bits).seed(&seed).hashes(1));
         block_hash_distribution_::<128>(BloomFilter::builder128(num_bits).seed(&seed).hashes(1));
@@ -515,7 +515,7 @@ mod tests {
             }
             assert_even_distribution(&counts, thresh_pct);
         }
-        let seed = [0; 16];
+        let seed = 0;
         index_hash_distribution_::<512>(BloomFilter::builder512(1).seed(&seed).hashes(1), 0.05);
         index_hash_distribution_::<256>(BloomFilter::builder256(1).seed(&seed).hashes(1), 0.05);
         index_hash_distribution_::<128>(BloomFilter::builder128(1).seed(&seed).hashes(1), 0.05);
@@ -560,7 +560,7 @@ mod tests {
                 assert_even_distribution(&counts, thresh_pct);
             }
         }
-        let seed = [0; 16];
+        let seed = 0;
         test_hash_integration_::<512>(BloomFilter::builder512(1).seed(&seed).hashes(1), 0.05);
         test_hash_integration_::<256>(BloomFilter::builder256(1).seed(&seed).hashes(1), 0.05);
         test_hash_integration_::<128>(BloomFilter::builder128(1).seed(&seed).hashes(1), 0.05);

@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 /// A bloom filter builder.
 ///
-/// This type can be used to construct an instance of `BloomFilter`
+/// This type can be used to construct an instance of [`BloomFilter`]
 /// via the builder pattern.
 #[derive(Debug, Clone)]
 pub struct Builder<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
@@ -12,7 +12,7 @@ pub struct Builder<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
 }
 
 impl<const BLOCK_SIZE_BITS: usize> Builder<BLOCK_SIZE_BITS> {
-    /// Sets the seed for this builder. The later constructed `BloomFilter`
+    /// Sets the seed for this builder. The later constructed [`BloomFilter`]
     /// will use this seed when hashing items.
     ///
     /// # Examples
@@ -20,16 +20,16 @@ impl<const BLOCK_SIZE_BITS: usize> Builder<BLOCK_SIZE_BITS> {
     /// ```
     /// use fastbloom::BloomFilter;
     ///
-    /// let bloom = BloomFilter::builder(1024).seed(&[0u8; 16]).hashes(4);
+    /// let bloom = BloomFilter::builder(1024).seed(&1).hashes(4);
     /// ```
-    pub fn seed(mut self, seed: &[u8; 16]) -> Self {
-        self.hasher = DefaultHasher::seeded(seed);
+    pub fn seed(mut self, seed: &u128) -> Self {
+        self.hasher = DefaultHasher::seeded(&seed.to_be_bytes());
         self
     }
 }
 
 impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
-    /// Sets the hasher for this builder. The later constructed `BloomFilter` will use
+    /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
     /// this hasher when inserting and checking items.
     ///
     /// # Examples

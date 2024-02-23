@@ -1,8 +1,8 @@
 # fastbloom
 [![Crates.io](https://img.shields.io/crates/v/fastbloom.svg)](https://crates.io/crates/fastbloom)
 [![docs.rs](https://docs.rs/bloomfilter/badge.svg)](https://docs.rs/fastbloom)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/tomtomwombat/bloom-filter/blob/main/LICENSE-MIT)
-[![License: APACHE](https://img.shields.io/badge/License-Apache-blue.svg)](https://github.com/tomtomwombat/bloom-filter/blob/main/LICENSE-Apache)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-MIT)
+[![License: APACHE](https://img.shields.io/badge/License-Apache-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-Apache)
 <a href="https://codecov.io/gh/tomtomwombat/fastbloom">
     <img src="https://codecov.io/gh/tomtomwombat/fastbloom/branch/main/graph/badge.svg">
 </a>
@@ -42,7 +42,7 @@ let filter = BloomFilter::builder(num_bits)
 ### Background
 Bloom filters are a space efficient approximate membership set data structure. False positives from `contains` are possible, but false negatives are not, i.e. `contains` for all items in the set is guaranteed to return true, while `contains` for all items not in the set probably return false.
 
-Blocked bloom filters are supported by an underlying bit vector, chunked into 512, 256, 128, or 64 bit "blocks", to track item membership. To insert, a number of bits, based on the item's hash, are set in the underlying bit vector. To check membership, a number of bits, based on the item's hash, are checked in the underlying bit vector.
+Blocked bloom filters are supported by an underlying bit vector, chunked into 512, 256, 128, or 64 bit "blocks", to track item membership. To insert, a number of bits, based on the item's hash, are set in one of the underlying bit vector's block. To check membership, a number of bits, based on the item's hash, are checked in one of the underlying bit vector's block. [See more on blocked bloom filters](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf).
 
 Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change.
 
@@ -86,6 +86,7 @@ As the number of bits and set size increase, traditional bloom filters need to p
 
 ## References
 - [Bloom Filter](https://brilliant.org/wiki/bloom-filter/)
+- [Cache-, Hash- and Space-Efficient Bloom Filters](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
 - [Less hashing, same performance: Building a better Bloom filter](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
 - [A fast alternative to the modulo reduction](https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/)
 
