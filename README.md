@@ -70,7 +70,7 @@ Runtime comparison to other bloom filter crates:
 
 ### False Positive Performance
 
-`fastbloom` does not compromise accuracy. Below is a comparison false positive rate with other bloom filter crates:
+`fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
 > ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/6d3bd507-604a-4ba6-90e0-15e024178bba)
 
 
