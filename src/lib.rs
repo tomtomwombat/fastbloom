@@ -399,16 +399,6 @@ mod tests {
     use std::hash::Hash;
     use std::{collections::HashSet, iter::repeat};
 
-    #[test]
-    fn simple() {
-        let mut b = BloomFilter::builder(1000).hashes(64);
-        b.extend(["x"]);
-        println!("rounds: {:?}, hashes: {:?}", b.num_rounds, b.num_hashes);
-        // println!("{:?}", b.contains("x"));
-        // println!("{:?}", b.contains("b"));
-        assert!(false);
-    }
-
     fn random_strings(num: usize, min_repeat: u32, max_repeat: u32, seed: u64) -> Vec<String> {
         let mut rng = StdRng::seed_from_u64(seed);
         let gen = rand_regex::Regex::compile(r"[a-zA-Z]+", max_repeat).unwrap();
