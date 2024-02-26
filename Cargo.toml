@@ -20,9 +20,13 @@ siphasher = "1.0.0"
 
 [dev-dependencies]
 rand_regex = "0.16.0"
-criterion = { version = "0.4", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 ahash = "0.8.6"
+bloom = "0.3.2"
+bloomfilter = "1.0.13"
+probabilistic-collections = "0.7.0"
+fastbloom-rs = "0.5.9"
 
 [[bench]]
-name = "bench_main"
+name = "bench_bloom_filter"
 harness = false

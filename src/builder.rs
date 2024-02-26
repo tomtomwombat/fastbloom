@@ -60,9 +60,56 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// let bloom = BloomFilter::builder(1024).hashes(4);
     /// ```
     pub fn hashes(self, num_hashes: u64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+        self.hashes_f(num_hashes as f64)
+    }
+
+    fn hashes_f(self, total_num_hashes: f64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+        // println!("total_num_hashes {:?}", total_num_hashes);
+        let num_u64s_per_block = (BLOCK_SIZE_BITS as u64 / 64) as f64;
+        let num_hashes_per_u64 = total_num_hashes / num_u64s_per_block;
+        // println!("num_hashes_per_u64 {:?}", num_hashes_per_u64);
+
+        let mut num_hashes = BloomFilter::<BLOCK_SIZE_BITS, S>::floor_round(total_num_hashes);
+        let mut num_rounds = 100;
+        let mut closest = 1000000.0;
+
+        for proposed_rounds_per_u64 in 1..=4 {
+            // println!("");
+            let hashes_covered_by_rounds = f64::ln(
+                -(2.718281828459045f64.powf(f64::ln(0.5f64) * (proposed_rounds_per_u64 as f64))
+                    - 1.0f64),
+            ) / f64::ln(63.0f64 / 64.0f64);
+            // println!("hashes_covered_by_rounds {:?}", hashes_covered_by_rounds);
+            if hashes_covered_by_rounds > num_hashes_per_u64 {
+                // (hashes_covered_by_rounds - num_hashes_per_u64).abs() > 0.0 {
+                continue;
+            }
+            let remaining_hashes_per_u64 = num_hashes_per_u64 - hashes_covered_by_rounds;
+            // println!("remaining_hashes_per_u64 {:?}", remaining_hashes_per_u64);
+            let total_hashes_we_would_do = BloomFilter::<BLOCK_SIZE_BITS, S>::floor_round(
+                remaining_hashes_per_u64 * (num_u64s_per_block as f64),
+            );
+            // println!("total_hashes_we_would_do {:?}", total_hashes_we_would_do);
+            let total_rounds_we_would_do = proposed_rounds_per_u64 * num_u64s_per_block as u64;
+            let total_work = total_hashes_we_would_do + total_rounds_we_would_do;
+            if total_work <= (num_hashes + num_rounds) && total_work < total_num_hashes as u64 {
+                let theoretical_hashes = total_hashes_we_would_do as f64
+                    + (hashes_covered_by_rounds * num_u64s_per_block as f64);
+                // num_hashes_per_u64 * (hashes_coverd_by_rounds + proposed_hashes_per_u64);
+                // println!("theoretical_hashes {:?}", theoretical_hashes);
+                let diff = (total_num_hashes - theoretical_hashes).abs();
+                //println!("diff {:?}", diff);
+                if diff < closest {
+                    num_rounds = total_rounds_we_would_do / (num_u64s_per_block as u64);
+                    num_hashes = total_hashes_we_would_do;
+                    closest = diff;
+                }
+            }
+        }
         BloomFilter {
             bits: BlockedBitVec::<BLOCK_SIZE_BITS>::new(self.num_blocks).unwrap(),
             num_hashes,
+            num_rounds,
             hasher: self.hasher,
         }
     }
@@ -81,8 +128,8 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// ```
     pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
         let num_hashes =
-            BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes(expected_num_items / self.num_blocks);
-        self.hashes(num_hashes)
+            BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(expected_num_items / self.num_blocks);
+        self.hashes_f(num_hashes)
     }
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
