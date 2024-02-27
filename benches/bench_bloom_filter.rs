@@ -30,7 +30,7 @@ fn run_bench_for<T: Container<String>>(
     group.bench_with_input(
         BenchmarkId::new(T::name(), num_items),
         &num_items,
-        |b, i| {
+        |b, _| {
             b.iter(|| {
                 for val in sample_vals.iter() {
                     black_box(bloom.check(val));
@@ -43,7 +43,6 @@ fn bench(c: &mut Criterion) {
     // list_fp::<fastbloom::BloomFilter<512>>();
     let sample_seed = 1234;
     let num_bytes = 262144;
-    let num_bits = num_bytes * 8;
     for seed in [1234, 9876] {
         let item_type = if seed == sample_seed {
             "Member"
@@ -51,7 +50,7 @@ fn bench(c: &mut Criterion) {
             "Non-Member"
         };
         let mut group = c.benchmark_group(&format!(
-            "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated)",
+            "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated, SipHash)",
             item_type,
             num_bytes / 1000
         ));
@@ -63,14 +62,30 @@ fn bench(c: &mut Criterion) {
             run_bench_for::<bloom::BloomFilter>(&mut group, num_items, seed);
             run_bench_for::<Bloom<String>>(&mut group, num_items, seed);
             run_bench_for::<ProbBloomFilter<String>>(&mut group, num_items, seed);
-
-            // run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(&mut group, num_items, seed);
-            // run_bench_for::<fastbloom_rs::BloomFilter>(&mut group, num_items, seed);
         }
         group.finish();
+
+        let mut group_2 = c.benchmark_group(&format!(
+            "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated)",
+            item_type,
+            num_bytes / 1000
+        ));
+        group_2.plot_config(PlotConfiguration::default());
+        for num_items in [
+            5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
+        ] {
+            run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
+                &mut group_2,
+                num_items,
+                seed,
+            );
+            run_bench_for::<fastbloom_rs::BloomFilter>(&mut group_2, num_items, seed);
+        }
+        group_2.finish();
     }
 }
 
+#[allow(dead_code)]
 fn false_pos_rate_with_vals<X: Hash + Eq + PartialEq>(
     filter: &impl Container<X>,
     control: &HashSet<X>,
@@ -87,6 +102,7 @@ fn false_pos_rate_with_vals<X: Hash + Eq + PartialEq>(
     (false_positives as f64) / (total as f64)
 }
 
+#[allow(dead_code)]
 fn list_fp<T: Container<u64>>() {
     let thresh = 0.1;
     let amount = 100_000;
@@ -148,7 +164,6 @@ fn random_numbers(num: usize, seed: u64) -> Vec<u64> {
 }
 
 trait Container<X: Hash> {
-    #[inline]
     fn check(&self, s: &X) -> bool;
     fn num_hashes(&self) -> usize;
     fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
@@ -175,7 +190,7 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<512, H> {
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom"
+        "fastbloom (ahash)"
     }
 }
 
@@ -192,7 +207,6 @@ impl<X: Hash> Container<X> for Bloom<X> {
         items: I,
     ) -> Self {
         let items = items.into_iter();
-        // let mut filter = Bloom::<X>::new_with_seed(num_bits / 8, items.len(), &[1; 32]);
         let mut filter = Bloom::<X>::new(num_bits / 8, items.len());
         for x in items {
             filter.set(&x);
@@ -251,7 +265,7 @@ impl Container<u64> for fastbloom_rs::BloomFilter {
         filter
     }
     fn name() -> &'static str {
-        "fastbloom-rs"
+        "fastbloom-rs (xxhash)"
     }
 }
 impl Container<String> for fastbloom_rs::BloomFilter {
@@ -276,7 +290,7 @@ impl Container<String> for fastbloom_rs::BloomFilter {
         filter
     }
     fn name() -> &'static str {
-        "fastbloom-rs"
+        "fastbloom-rs (xxhash)"
     }
 }
 
