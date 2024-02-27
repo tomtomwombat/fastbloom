@@ -71,7 +71,7 @@ fn bench(c: &mut Criterion) {
         ));
         g2.plot_config(PlotConfiguration::default());
         for num_items in [
-            5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
+            // 5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
                 &mut g2, num_items, seed,
@@ -240,6 +240,30 @@ impl<X: Hash> Container<X> for bloom::BloomFilter {
     }
 }
 
+impl<X: Hash> Container<X> for ProbBloomFilter<X> {
+    #[inline]
+    fn check(&self, s: &X) -> bool {
+        self.contains(s)
+    }
+    fn num_hashes(&self) -> usize {
+        self.hasher_count() as usize
+    }
+    fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
+        num_bits: usize,
+        items: I,
+    ) -> Self {
+        let items = items.into_iter();
+        let mut filter = ProbBloomFilter::<X>::from_item_count(num_bits, items.len());
+        for x in items {
+            filter.insert(&x);
+        }
+        filter
+    }
+    fn name() -> &'static str {
+        "probabilistic-collections"
+    }
+}
+
 impl Container<u64> for fastbloom_rs::BloomFilter {
     #[inline]
     fn check(&self, s: &u64) -> bool {
@@ -262,7 +286,7 @@ impl Container<u64> for fastbloom_rs::BloomFilter {
         filter
     }
     fn name() -> &'static str {
-        "fastbloom-rs (xxhash)"
+        "fastbloom-rs"
     }
 }
 impl Container<String> for fastbloom_rs::BloomFilter {
@@ -287,30 +311,6 @@ impl Container<String> for fastbloom_rs::BloomFilter {
         filter
     }
     fn name() -> &'static str {
-        "fastbloom-rs (xxhash)"
-    }
-}
-
-impl<X: Hash> Container<X> for ProbBloomFilter<X> {
-    #[inline]
-    fn check(&self, s: &X) -> bool {
-        self.contains(s)
-    }
-    fn num_hashes(&self) -> usize {
-        self.hasher_count() as usize
-    }
-    fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
-        num_bits: usize,
-        items: I,
-    ) -> Self {
-        let items = items.into_iter();
-        let mut filter = ProbBloomFilter::<X>::from_item_count(num_bits, items.len());
-        for x in items {
-            filter.insert(&x);
-        }
-        filter
-    }
-    fn name() -> &'static str {
-        "probabilistic-collections"
+        "fastbloom-rs"
     }
 }
