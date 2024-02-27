@@ -49,7 +49,7 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 ### Implementation
 
-`fastbloom` is blazingly fast because it uses L1 cache friendly blocks and efficiently derives many index bits from only one hash per value. Compared to traditional implementations, `fastbloom` is 2-5 times faster for small sets of items, and hundreds of times faster for larger item sets. In all cases, `fastbloom` maintains competitive false positive rates.
+`fastbloom` is **several times faster** than existing bloomfilters and scales very well with number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks and efficiently derives many index bits from only one hash per value.
 
 ### Runtime Performance
 
