@@ -53,36 +53,20 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 ### Runtime Performance
 
-Runtime comparison to other bloom filter crates:
-- Bloom memory size = 16Kb
-- 1000 contained items
-- 364 hashes per item
-  
-|  | Check Non-Existing (ns) | Check Existing (ns) |
-| --- | --- | --- |
-| fastbloom | 16.900 | 139.62 |
-| *fastbloom-rs | 35.358 | 485.81 |
-| bloom | 66.136 | 749.27 |
-| bloomfilter | 68.912 | 996.56 |
-| probabilistic-collections | 83.385 | 974.67 |
+Runtime comparison to other bloom filter crates (all using SipHash):
+> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/6d131859-414e-47e2-958e-5675827d2138)
+> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/82cc2fe3-3808-462a-8105-7f88830b28d9)
 
-*fastbloom-rs uses XXHash, which is faster than SipHash (the default hasher for all other bloom filters listed).
+The fastbloom-rs crate, (similarily named), uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare.
+> ![member-fastbloom](https://github.com/tomtomwombat/fastbloom/assets/45644087/ed84e9b6-7aab-4109-aea8-462ab97e835f)
+> ![non-member-fastbloom](https://github.com/tomtomwombat/fastbloom/assets/45644087/316a691a-0e29-4de2-9f1f-cd34e7662956)
+
 
 ### False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
-> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/6d3bd507-604a-4ba6-90e0-15e024178bba)
+> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/f5c3af19-7467-4023-b46c-3f89b3d9d824)
 
-
-
-### Scaling
-
-`fastbloom` scales very well.
-
-As the number of bits and set size increase, traditional bloom filters need to perform more hashes per item to keep false positive rates low. However, `fastbloom`'s optimal number of hashes is bounded while keeping near zero rates even for many items:
-> ![bloom-scaling](https://github.com/tomtomwombat/fastbloom/assets/45644087/f00607d6-1313-4296-aef2-9b86815eeba7)
->
-> Bloom filter speed is directly proportional to number of hashes.
 
 ## References
 - [Bloom Filter](https://brilliant.org/wiki/bloom-filter/)
