@@ -64,24 +64,21 @@ fn bench(c: &mut Criterion) {
             run_bench_for::<ProbBloomFilter<String>>(&mut group, num_items, seed);
         }
         group.finish();
-
-        let mut group_2 = c.benchmark_group(&format!(
+        let mut g2 = c.benchmark_group(&format!(
             "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated)",
             item_type,
             num_bytes / 1000
         ));
-        group_2.plot_config(PlotConfiguration::default());
+        g2.plot_config(PlotConfiguration::default());
         for num_items in [
             5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
-                &mut group_2,
-                num_items,
-                seed,
+                &mut g2, num_items, seed,
             );
-            run_bench_for::<fastbloom_rs::BloomFilter>(&mut group_2, num_items, seed);
+            run_bench_for::<fastbloom_rs::BloomFilter>(&mut g2, num_items, seed);
         }
-        group_2.finish();
+        g2.finish();
     }
 }
 
@@ -190,7 +187,7 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<512, H> {
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom (ahash)"
+        "fastbloom"
     }
 }
 

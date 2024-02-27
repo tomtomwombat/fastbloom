@@ -326,19 +326,19 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         let [mut h1, mut h2] = get_orginal_hashes(&self.hasher, val);
         let block_index = block_index(self.num_blocks(), h1);
         let block = &self.bits.get_block(block_index);
-        Self::hash_seeds(self.num_hashes).into_iter().all(|i| {
-            BlockedBitVec::<BLOCK_SIZE_BITS>::check_all_for_block(
-                block,
-                Self::bit_indexes(&mut h1, &mut h2, i),
-            )
-        }) && if let Some(num_rounds) = self.num_rounds {
+        (if let Some(num_rounds) = self.num_rounds {
             (0..block.len()).all(|i| {
                 let data = Self::signature(&mut h1, &mut h2, num_rounds);
                 (block[i] & data) == data
             })
         } else {
             true
-        }
+        }) && Self::hash_seeds(self.num_hashes).into_iter().all(|i| {
+            BlockedBitVec::<BLOCK_SIZE_BITS>::check_all_for_block(
+                block,
+                Self::bit_indexes(&mut h1, &mut h2, i),
+            )
+        })
     }
 
     /// Returns the effective number of hashes per item.
