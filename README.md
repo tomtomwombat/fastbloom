@@ -49,20 +49,20 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 ### Implementation
 
-`fastbloom` is **several times faster** than existing bloomfilters and scales very well with number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks and efficiently derives many index bits from only one hash per value.
+`fastbloom` is **several times faster** than existing bloom filters and scales very well with number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks and efficiently derives many index bits from only one hash per value.
 
 ### Runtime Performance
 
 #### SipHash
-Runtime comparison to other bloom filter crates (all using SipHash):
-> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/106b4f3b-d5d5-46e0-849b-fd0b87d6e1c9)
-> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/7dc66ae3-7cbe-4376-bdce-fc9993c62ddb)
+Runtime comparison to other bloom filter crates (all using SipHash). Note, as number of items (input) increases, the accuracy of the bloom filter decreases.
+> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/9523cf6c-a0c5-46e0-854e-0d88a8f8ecf4)
+> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/2a742235-3ecc-4b53-8430-901883bf8a95)
 
 
 #### Any Hash Goes
 The fastbloom-rs crate, (similarily named), uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare.
-> ![fastbloom-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/8cbe1351-0fb7-43d4-8bf1-430dc4210ca2)
-> ![fastbloom-non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/417a67d5-7008-439f-8b01-ea65bf0ddad7)
+>![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/bc2c4899-f87e-4406-b1df-cba5265d835a)
+> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/a214c88e-3b3a-48f1-8614-f9ed4a0f0c57)
 
 
 ### False Positive Performance
