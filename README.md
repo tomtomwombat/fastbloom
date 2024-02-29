@@ -61,8 +61,9 @@ Runtime comparison to other bloom filter crates (all using SipHash). Note, as nu
 
 #### Any Hash Goes
 The fastbloom-rs crate, (similarily named), uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare.
->![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/bc2c4899-f87e-4406-b1df-cba5265d835a)
-> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/a214c88e-3b3a-48f1-8614-f9ed4a0f0c57)
+> ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/f06ff60d-eaf4-416c-8af2-0db4622579a3)
+> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/50cf20ed-d062-4c31-bc12-18a8aff2a268)
+
 
 
 ### False Positive Performance
