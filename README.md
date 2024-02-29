@@ -54,13 +54,13 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 ### Runtime Performance
 
 #### SipHash
-Runtime comparison to other bloom filter crates (all using SipHash). Note, as number of items (input) increases, the accuracy of the bloom filter decreases.
+Runtime comparison to other bloom filter crates (all using SipHash). Note, as number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
 > ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/9523cf6c-a0c5-46e0-854e-0d88a8f8ecf4)
 > ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/2a742235-3ecc-4b53-8430-901883bf8a95)
 
 
 #### Any Hash Goes
-The fastbloom-rs crate, (similarily named), uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare.
+The fastbloom-rs crate, (similarily named), uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
 > ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/f06ff60d-eaf4-416c-8af2-0db4622579a3)
 > ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/50cf20ed-d062-4c31-bc12-18a8aff2a268)
 
