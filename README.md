@@ -55,21 +55,21 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 #### SipHash
 Runtime comparison to other bloom filter crates (all using SipHash). Note, as number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
-> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/9523cf6c-a0c5-46e0-854e-0d88a8f8ecf4)
-> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/2a742235-3ecc-4b53-8430-901883bf8a95)
+> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
+> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
 
 
 #### Any Hash Goes
 The fastbloom-rs crate (similarily named) uses xxhash, which faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
-> ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/f06ff60d-eaf4-416c-8af2-0db4622579a3)
-> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/50cf20ed-d062-4c31-bc12-18a8aff2a268)
+> ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/9bf303fd-897d-412b-9f42-c57e6460ead0)
+> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/060e739b-7fb2-4c18-8086-7034f6fb92c0)
 
 
 
 ### False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
-> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/78ac333f-e1af-44ca-b96b-e4aa8d823675)
+> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 
 
 
