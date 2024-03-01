@@ -50,13 +50,13 @@ fn bench(c: &mut Criterion) {
             "Non-Member"
         };
         let mut group = c.benchmark_group(&format!(
-            "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated, SipHash)",
+            "{} Check Speed vs Items in Bloom Filter ({}Kb Allocated, SipHash)",
             item_type,
             num_bytes / 1000
         ));
         group.plot_config(PlotConfiguration::default());
         for num_items in [
-            5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
+            // 5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512>>(&mut group, num_items, seed);
             run_bench_for::<bloom::BloomFilter>(&mut group, num_items, seed);
@@ -65,13 +65,14 @@ fn bench(c: &mut Criterion) {
         }
         group.finish();
         let mut g2 = c.benchmark_group(&format!(
-            "{} Check Speed vs Number of Items in BloomFilter ({}Kb Allocated)",
+            "{} Check Speed vs Items in Bloom Filter ({}Kb Allocated)",
             item_type,
             num_bytes / 1000
         ));
         g2.plot_config(PlotConfiguration::default());
         for num_items in [
-            // 5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
+            1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000, 15_000, 20_000, 25_000,
+            50_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
                 &mut g2, num_items, seed,
@@ -103,7 +104,7 @@ fn false_pos_rate_with_vals<X: Hash + Eq + PartialEq>(
 fn list_fp<T: Container<u64>>() {
     let thresh = 0.1;
     let amount = 100_000;
-    for bloom_size_bytes in [65536, 262144] {
+    for bloom_size_bytes in [262144] {
         let mut fp = 0.0;
         for num_items_base in (8..23).map(|x| 1 << x) {
             let all_num_items: Vec<usize> = if fp > 0.0 && fp < thresh {

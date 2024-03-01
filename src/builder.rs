@@ -1,6 +1,8 @@
 use crate::{BlockedBitVec, BloomFilter, BuildHasher, DefaultHasher};
 use std::hash::Hash;
 
+use crate::signature;
+
 /// A bloom filter builder.
 ///
 /// This type can be used to construct an instance of [`BloomFilter`]
@@ -69,7 +71,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// For more on signatures, see "BloomFilter::signature".
     ///
     /// For example, if our target total hashes 40, and we have a block of two u64s,
-    /// we'll require ~40 bits (ignore collisions for simplicity) set across the two u64s.
+    /// we'll require ~40 bits (ignoring probability collisions for simplicity in this example) set across the two u64s.
     /// for each u64 in the block, generate two signatures each with about 16 bits set (2 rounds each).
     /// then calcuate 8 bit indexes from the hash to cover the remaining. 16 + 16 + 8 = 40.
     /// the total work here is 4 rounds + 8 hashes, instead of 40 hashes.
@@ -77,42 +79,10 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// Note:
     /// - the min number of rounds is 1, generating around ~32 bits, which is the max entropy in the u64.
     /// - the max number of rounds is ~4. That produces a signature of ~4 bits set (1/2^4), at which point we may as well calculate 4 bit indexes normally.
-    /// - rounds should always be accompanied with at least one hash/index, as a signature may produce 0 bits set (very rarely) for an item, meaning the item
-    ///   could never be added to the bloom filter!
     fn hashes_f(self, total_num_hashes: f64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let num_u64s_per_block = (BLOCK_SIZE_BITS as u64 / 64) as f64;
-        let num_hashes_per_u64 = total_num_hashes / num_u64s_per_block;
-        let mut num_hashes = BloomFilter::<BLOCK_SIZE_BITS, S>::floor_round(total_num_hashes);
-        let mut num_rounds = None;
-        let mut closest = 1000000.0;
+        let (num_hashes, num_rounds) =
+            signature::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
 
-        for proposed_rounds_per_u64 in 1..=4 {
-            let hashes_covered_by_rounds = f64::ln(
-                -(2.718281828459045f64.powf(f64::ln(0.5f64) * (proposed_rounds_per_u64 as f64))
-                    - 1.0f64),
-            ) / f64::ln(63.0f64 / 64.0f64);
-            if hashes_covered_by_rounds > num_hashes_per_u64 {
-                continue;
-            }
-            let remaining_hashes_per_u64 = num_hashes_per_u64 - hashes_covered_by_rounds;
-            let total_hashes_we_would_do = BloomFilter::<BLOCK_SIZE_BITS, S>::floor_round(
-                remaining_hashes_per_u64 * (num_u64s_per_block as f64),
-            );
-            let total_rounds_we_would_do = proposed_rounds_per_u64 * num_u64s_per_block as u64;
-            let total_work = total_hashes_we_would_do + total_rounds_we_would_do;
-            if total_work <= (num_hashes + num_rounds.unwrap_or(100))
-                && total_work < total_num_hashes as u64
-            {
-                let theoretical_hashes = total_hashes_we_would_do as f64
-                    + (hashes_covered_by_rounds * num_u64s_per_block as f64);
-                let diff = (total_num_hashes - theoretical_hashes).abs();
-                if diff < closest {
-                    num_rounds = Some(total_rounds_we_would_do / (num_u64s_per_block as u64));
-                    num_hashes = total_hashes_we_would_do;
-                    closest = diff;
-                }
-            }
-        }
         BloomFilter {
             bits: BlockedBitVec::<BLOCK_SIZE_BITS>::new(self.num_blocks).unwrap(),
             target_hashes: total_num_hashes as u64,
@@ -135,8 +105,9 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// let bloom = BloomFilter::builder(1024).expected_items(500);
     /// ```
     pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let num_hashes =
-            BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(expected_num_items / self.num_blocks);
+        // println!("{:?} {:?}", expected_num_items / self.num_blocks, );
+        let items_per_block = expected_num_items as f64 / self.num_blocks as f64;
+        let num_hashes = BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(items_per_block);
         self.hashes_f(num_hashes)
     }
 

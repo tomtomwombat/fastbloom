@@ -8,6 +8,7 @@ mod builder;
 pub use builder::Builder;
 mod bit_vector;
 use bit_vector::BlockedBitVec;
+mod signature;
 
 /// Produces a new hash efficiently from two orignal hashes and a seed.
 ///
@@ -28,7 +29,7 @@ fn seeded_hash_from_hashes(h1: &mut u64, h2: &mut u64, seed: u64) -> u64 {
 /// many more "fake hahes" h, using h = h1 + i * h2.
 ///
 /// However, here we only use 1 real hash, for performance, and derive h1 and h2:
-/// First, we'll think of the real 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
+/// First, we'll think of the 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
 ///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
 /// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
 /// For h1, we'll use the original upper bits 32 of the real hash.
@@ -214,48 +215,20 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// Slicing the hash in this way is way more performant than `seeded_hash_from_hashes`.
     ///
     /// `2u32.pow(u32::ilog2(64 / Self::BIT_INDEX_MASK_LEN))` for less accuracy and more performance.
-    const NUM_COORDS_PER_HASH: u32 = 1; // ;
-
-    #[inline]
-    fn floor_round(x: f64) -> u64 {
-        let floored = x.floor() as u64;
-        let thresh = Self::NUM_COORDS_PER_HASH as u64;
-        if floored < thresh {
-            thresh
-        } else {
-            floored - (floored % thresh)
-        }
-    }
+    const NUM_COORDS_PER_HASH: u32 = 1;
 
     /// The optimal number of hashes to perform for an item given the expected number of items to be contained in one block.
     /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>
     #[inline]
-    fn optimal_hashes_f(items_per_block: usize) -> f64 {
-        let m = BLOCK_SIZE_BITS as f64;
-        let n = std::cmp::max(items_per_block, 1) as f64;
-        let num_hashes = m / n * f64::ln(2.0f64);
-        num_hashes
-    }
-
-    /// Returns a `u64` with the approx 64 * 1/2^num_rounds set
-    ///
-    /// Using the raw hash is very fast way of setting ~32 random bits
-    /// Using the intersection of two raw hashes is very fast way of setting ~16 random bits.
-    /// etc
-    ///
-    /// If the bloom filter has a higher number of hashes to be performed per item,
-    /// we can use "signatures" to quickly get many index bits, and use traditional
-    /// index setting for the remainder of hashes.
-    #[inline]
-    fn signature(h1: &mut u64, h2: &mut u64, num_round: u64) -> u64 {
-        let mut data = seeded_hash_from_hashes(h1, h2, 0);
-
-        // Bit thinning round. Each round approx halves the number of 1 bits in `data`.
-        for j in 1..num_round {
-            let h = seeded_hash_from_hashes(h1, h2, j);
-            data &= h;
+    fn optimal_hashes_f(items_per_block: f64) -> f64 {
+        let block_size = BLOCK_SIZE_BITS as f64;
+        let max_hashes = block_size / 64.0f64 * signature::hashes_for_bits(32);
+        let hashes_per_block = block_size / items_per_block * f64::ln(2.0f64);
+        if hashes_per_block > max_hashes {
+            max_hashes
+        } else {
+            hashes_per_block
         }
-        data
     }
 
     /// Return the bit indexes within a block for an item's two orginal hashes.
@@ -293,19 +266,19 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     pub fn insert(&mut self, val: &(impl Hash + ?Sized)) {
         let [mut h1, mut h2] = get_orginal_hashes(&self.hasher, val);
         let block_index = block_index(self.num_blocks(), h1);
-        if let Some(num_rounds) = self.num_rounds {
-            for i in 0..self.bits.get_block(block_index).len() {
-                let data = Self::signature(&mut h1, &mut h2, num_rounds);
-                let block = &mut self.bits.get_block_mut(block_index);
-                block[i] |= data;
-            }
-        }
         let block = &mut self.bits.get_block_mut(block_index);
         for i in Self::hash_seeds(self.num_hashes) {
             BlockedBitVec::<BLOCK_SIZE_BITS>::set_all_for_block(
                 block,
                 Self::bit_indexes(&mut h1, &mut h2, i),
             );
+        }
+        if let Some(num_rounds) = self.num_rounds {
+            for i in 0..self.bits.get_block(block_index).len() {
+                let data = signature::signature(&mut h1, &mut h2, num_rounds);
+                let block = &mut self.bits.get_block_mut(block_index);
+                block[i] |= data;
+            }
         }
     }
 
@@ -325,22 +298,22 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         let [mut h1, mut h2] = get_orginal_hashes(&self.hasher, val);
         let block_index = block_index(self.num_blocks(), h1);
         let block = &self.bits.get_block(block_index);
-        (if let Some(num_rounds) = self.num_rounds {
-            (0..block.len()).all(|i| {
-                let data = Self::signature(&mut h1, &mut h2, num_rounds);
-                (block[i] & data) == data
-            })
-        } else {
-            true
-        }) && Self::hash_seeds(self.num_hashes).into_iter().all(|i| {
+        Self::hash_seeds(self.num_hashes).into_iter().all(|i| {
             BlockedBitVec::<BLOCK_SIZE_BITS>::check_all_for_block(
                 block,
                 Self::bit_indexes(&mut h1, &mut h2, i),
             )
+        }) && (if let Some(num_rounds) = self.num_rounds {
+            (0..block.len()).all(|i| {
+                let data = signature::signature(&mut h1, &mut h2, num_rounds);
+                (block[i] & data) == data
+            })
+        } else {
+            true
         })
     }
 
-    /// Returns the effective number of hashes per item.
+    /// Returns the number of hashes per item.
     #[inline]
     pub fn num_hashes(&self) -> u64 {
         self.target_hashes
@@ -383,6 +356,20 @@ mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use std::{collections::HashSet, iter::repeat};
 
+    trait Seeded: BuildHasher {
+        fn seeded(seed: &[u8; 16]) -> Self;
+    }
+    impl Seeded for DefaultHasher {
+        fn seeded(seed: &[u8; 16]) -> Self {
+            Self::seeded(seed)
+        }
+    }
+    impl Seeded for ahash::RandomState {
+        fn seeded(seed: &[u8; 16]) -> Self {
+            ahash::RandomState::with_seed(seed[0] as usize)
+        }
+    }
+
     fn random_strings(num: usize, min_repeat: u32, max_repeat: u32, seed: u64) -> Vec<String> {
         let mut rng = StdRng::seed_from_u64(seed);
         let gen = rand_regex::Regex::compile(r"[a-zA-Z]+", max_repeat).unwrap();
@@ -407,14 +394,13 @@ mod tests {
         fn num_hashes(&self) -> usize;
         fn block_counts(&self) -> Vec<u64>;
     }
-    impl<const N: usize, H: BuildHasher + Default> Container for BloomFilter<N, H> {
+    impl<const N: usize, H: Seeded> Container for BloomFilter<N, H> {
         fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
             num_bits: usize,
             items: I,
         ) -> Self {
             BloomFilter::new_builder::<N>(num_bits)
-                .seed(&42)
-                .hasher(H::default())
+                .hasher(H::seeded(&[42; 16]))
                 .items(items)
         }
         fn check<X: Hash>(&self, s: X) -> bool {
@@ -451,13 +437,13 @@ mod tests {
             }
         }
         random_inserts_always_contained_::<BloomFilter<512>>();
-        // random_inserts_always_contained_::<BloomFilter<256>>();
-        // random_inserts_always_contained_::<BloomFilter<128>>();
-        // random_inserts_always_contained_::<BloomFilter<64>>();
-        // random_inserts_always_contained_::<BloomFilter<512, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<256, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<128, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<64, ahash::RandomState>>();
+        random_inserts_always_contained_::<BloomFilter<256>>();
+        random_inserts_always_contained_::<BloomFilter<128>>();
+        random_inserts_always_contained_::<BloomFilter<64>>();
+        random_inserts_always_contained_::<BloomFilter<512, ahash::RandomState>>();
+        random_inserts_always_contained_::<BloomFilter<256, ahash::RandomState>>();
+        random_inserts_always_contained_::<BloomFilter<128, ahash::RandomState>>();
+        random_inserts_always_contained_::<BloomFilter<64, ahash::RandomState>>();
     }
 
     #[test]
@@ -534,28 +520,6 @@ mod tests {
         false_pos_decrease_with_size_::<BloomFilter<256, ahash::RandomState>>();
         false_pos_decrease_with_size_::<BloomFilter<128, ahash::RandomState>>();
         false_pos_decrease_with_size_::<BloomFilter<64, ahash::RandomState>>();
-    }
-
-    #[test]
-    fn test_floor_round() {
-        fn assert_floor_round<const N: usize>() {
-            let hashes = BloomFilter::<N>::NUM_COORDS_PER_HASH;
-            for i in 0..hashes {
-                assert_eq!(hashes as u64, BloomFilter::<N>::floor_round(i as f64));
-            }
-            for i in (hashes as u64..100).step_by(hashes as usize) {
-                for j in 0..(hashes as u64) {
-                    let x = (i + j) as f64;
-                    assert_eq!(i, BloomFilter::<N>::floor_round(x));
-                    assert_eq!(i, BloomFilter::<N>::floor_round(x + 0.9999));
-                    assert_eq!(i, BloomFilter::<N>::floor_round(x + 0.0001));
-                }
-            }
-        }
-        assert_floor_round::<512>();
-        assert_floor_round::<256>();
-        assert_floor_round::<128>();
-        assert_floor_round::<64>();
     }
 
     fn assert_even_distribution(distr: &[u64], err: f64) {
