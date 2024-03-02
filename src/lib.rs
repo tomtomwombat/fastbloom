@@ -447,6 +447,44 @@ mod tests {
     }
 
     #[test]
+    fn test_optimal_hashes_is_optimal() {
+        fn test_optimal_hashes_is_optimal_<const BLOCK_SIZE_BITS: usize, H: Seeded>() {
+            let sizes = [1000, 5000, 10000];
+            let mut wins = 0;
+            for num_items in sizes.clone() {
+                let sample_vals = random_numbers(num_items, 42);
+                let num_bits = 65000 * 8;
+                let filter = BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+                    .hasher(H::seeded(&[42; 16]))
+                    .items(sample_vals.clone().into_iter());
+                let control: HashSet<u64> = sample_vals.clone().into_iter().collect();
+                let anti_vals = random_numbers(100_000, 3);
+                let fp_to_beat = false_pos_rate_with_vals(&filter, &control, &anti_vals);
+                let optimal_hashes = filter.num_hashes();
+
+                for num_hashes in [optimal_hashes - 1, optimal_hashes + 1] {
+                    let mut test_filter = BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+                        .hasher(H::seeded(&[42; 16]))
+                        .hashes(num_hashes);
+                    test_filter.extend(sample_vals.clone().into_iter());
+                    let fp = false_pos_rate_with_vals(&test_filter, &control, &anti_vals);
+                    // println!("{:?} {fp_to_beat:} > {fp:}. {optimal_hashes:} vs {num_hashes:}", fp_to_beat <= fp);
+                    wins += (fp_to_beat <= fp) as usize;
+                }
+            }
+            assert!(wins > sizes.len() / 2);
+        }
+        test_optimal_hashes_is_optimal_::<512, DefaultHasher>();
+        test_optimal_hashes_is_optimal_::<256, DefaultHasher>();
+        test_optimal_hashes_is_optimal_::<128, DefaultHasher>();
+        test_optimal_hashes_is_optimal_::<64, DefaultHasher>();
+        test_optimal_hashes_is_optimal_::<512, ahash::RandomState>();
+        test_optimal_hashes_is_optimal_::<256, ahash::RandomState>();
+        test_optimal_hashes_is_optimal_::<128, ahash::RandomState>();
+        test_optimal_hashes_is_optimal_::<64, ahash::RandomState>();
+    }
+
+    #[test]
     fn seeded_is_same() {
         let num_bits = 1 << 13;
         let sample_vals = random_strings(1000, 16, 32, 53226);
@@ -471,17 +509,17 @@ mod tests {
         }
     }
 
-    fn false_pos_rate_with_vals<X: Hash + Eq + PartialEq>(
+    fn false_pos_rate_with_vals<'a, X: Hash + Eq + PartialEq + 'a>(
         filter: &impl Container,
         control: &HashSet<X>,
-        anti_vals: impl IntoIterator<Item = X>,
+        anti_vals: impl IntoIterator<Item = &'a X>,
     ) -> f64 {
         let mut total = 0;
         let mut false_positives = 0;
         for x in anti_vals.into_iter() {
-            if !control.contains(&x) {
+            if !control.contains(x) {
                 total += 1;
-                false_positives += filter.check(&x) as usize;
+                false_positives += filter.check(x) as usize;
             }
         }
         (false_positives as f64) / (total as f64)
@@ -490,6 +528,7 @@ mod tests {
     #[test]
     fn false_pos_decrease_with_size() {
         fn false_pos_decrease_with_size_<T: Container>() {
+            let anti_vals = random_numbers(1000, 2);
             for mag in 5..6 {
                 let size = 10usize.pow(mag);
                 let mut prev_fp = 1.0;
@@ -499,14 +538,18 @@ mod tests {
                     let sample_vals = random_numbers(size, 1);
                     let filter: T = Container::new(num_bits, sample_vals.iter());
                     let control: HashSet<u64> = sample_vals.into_iter().collect();
-                    let fp = false_pos_rate_with_vals(&filter, &control, random_numbers(1000, 2));
+                    let fp = false_pos_rate_with_vals(&filter, &control, &anti_vals);
 
-                    println!(
+                    let err = format!(
                         "size: {size:}, num_bits: {num_bits:}, {:.6}, {:?}",
                         fp,
                         filter.num_hashes(),
                     );
-                    assert!(fp <= prev_fp || prev_fp <= prev_prev_fp || fp < 0.01); // allows 1 data point to be higher
+                    assert!(
+                        fp <= prev_fp || prev_fp <= prev_prev_fp || fp < 0.01,
+                        "{}",
+                        err
+                    ); // allows 1 data point to be higher
                     prev_prev_fp = prev_fp;
                     prev_fp = fp;
                 }

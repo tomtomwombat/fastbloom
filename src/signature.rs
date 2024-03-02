@@ -276,3 +276,27 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
     }
     (num_hashes, num_rounds)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn hash_creation() {
+        for block_size in [64, 128, 256, 512] {
+            for num_hashes in 0..5000 {
+                let (hashes, num_rounds) = optimize_hashing(num_hashes as f64, block_size);
+                assert!(num_rounds.unwrap_or(0) <= 64);
+                match num_rounds {
+                    None => assert_eq!(num_hashes, hashes, "None"),
+                    Some(x) => {
+                        let hashes_for_rounds =
+                            (hashes_for_bits(x) * (block_size / 64) as f64).round() as u64;
+                        assert_eq!(hashes_for_rounds + hashes, num_hashes,
+                        "\ntarget hashes: {num_hashes:}\nhashes for rounds {hashes_for_rounds:}\nrounds {x:}\nhashes: {hashes:}")
+                    }
+                }
+            }
+        }
+    }
+}
