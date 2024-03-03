@@ -59,7 +59,7 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 ### Implementation
 
-`fastbloom` is **several times faster** than existing bloom filters and scales very well with number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks and efficiently derives many index bits from **only one hash per value**.
+`fastbloom` is **several times faster** than existing bloom filters and scales very well with number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one hash per value**, and leverages other research findings on bloom filters.
 
 `fastbloom`'s default hasher is SipHash-1-3 using randomized keys, but can be seeded or configured to use any hasher.
 
