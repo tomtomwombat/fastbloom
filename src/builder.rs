@@ -50,9 +50,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     }
 
     /// "Consumes" this builder, using the provided `num_hashes` to return an
-    /// empty [`BloomFilter`]. For performance, the actual number of
-    /// hashes performed internally will be rounded to down to a power of 2,
-    /// depending on `BLOCK_SIZE_BITS`.
+    /// empty [`BloomFilter`].
     ///
     /// # Examples
     ///
@@ -93,9 +91,9 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     }
 
     /// "Consumes" this builder, using the provided `expected_num_items` to return an
-    /// empty [`BloomFilter`]. More or less than `expected_num_items` may be inserted into
-    /// [`BloomFilter`], but the number of hashes per item is intially calculated
-    /// to minimize false positive rate for exactly `expected_num_items`.
+    /// empty [`BloomFilter`]. The number of hashes is optimized based on `expected_num_items`
+    /// to reduce false positive accuracy.
+    /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
     ///
     /// # Examples
     ///
@@ -105,7 +103,6 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// let bloom = BloomFilter::builder(1024).expected_items(500);
     /// ```
     pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        // println!("{:?} {:?}", expected_num_items / self.num_blocks, );
         let items_per_block = expected_num_items as f64 / self.num_blocks as f64;
         let num_hashes = BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(items_per_block);
         self.hashes_f(num_hashes)
