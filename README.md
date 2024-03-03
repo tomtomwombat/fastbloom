@@ -64,9 +64,11 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 `fastbloom`'s default hasher is SipHash-1-3 using randomized keys, but can be seeded or configured to use any hasher.
 
 ### How it Works (WIP)
+The underlying bit vector of our bloom filter is initially 0s.
+|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|
+|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|
 
-| 0 | 1 | 1 |
-| - | - | - |
+Lets say our target hashes is .
 
 ### Runtime Performance
 
