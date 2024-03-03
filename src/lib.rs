@@ -449,7 +449,7 @@ mod tests {
     #[test]
     fn test_optimal_hashes_is_optimal() {
         fn test_optimal_hashes_is_optimal_<const BLOCK_SIZE_BITS: usize, H: Seeded>() {
-            let sizes = [1000, 5000, 10000];
+            let sizes = [1000, 2000, 5000, 6000, 8000, 10000];
             let mut wins = 0;
             for num_items in sizes.clone() {
                 let sample_vals = random_numbers(num_items, 42);
@@ -468,7 +468,6 @@ mod tests {
                         .hashes(num_hashes);
                     test_filter.extend(sample_vals.clone().into_iter());
                     let fp = false_pos_rate_with_vals(&test_filter, &control, &anti_vals);
-                    // println!("{:?} {fp_to_beat:} > {fp:}. {optimal_hashes:} vs {num_hashes:}", fp_to_beat <= fp);
                     wins += (fp_to_beat <= fp) as usize;
                 }
             }
@@ -592,9 +591,9 @@ mod tests {
     }
     #[test]
     fn block_hash_distribution() {
-        fn block_hash_distribution_<H: BuildHasher + Default>(num_blocks: usize) {
+        fn block_hash_distribution_<H: BuildHasher + Seeded>(num_blocks: usize) {
             let mut buckets = vec![0; num_blocks];
-            let hasher = H::default();
+            let hasher = H::seeded(&[42; 16]);
             for x in random_numbers(num_blocks * 10000, 42) {
                 let [h1, _] = get_orginal_hashes(&hasher, &x);
                 buckets[block_index(num_blocks, h1)] += 1;
@@ -645,10 +644,10 @@ mod tests {
 
     #[test]
     fn test_hash_integration() {
-        fn test_hash_integration_<const N: usize, H: BuildHasher + Default>(thresh_pct: f64) {
+        fn test_hash_integration_<const N: usize, H: BuildHasher + Seeded>(thresh_pct: f64) {
             fn test_with_distr_fn<
                 const N: usize,
-                H: BuildHasher + Default,
+                H: BuildHasher + Seeded,
                 F: FnMut(usize) -> usize,
             >(
                 mut f: F,
@@ -671,7 +670,7 @@ mod tests {
             }
             for num_hashes in [1, 4, 8] {
                 let clone_me = BloomFilter::new_builder::<N>(4)
-                    .hasher(H::default())
+                    .hasher(H::seeded(&[42; 16]))
                     .hashes(num_hashes);
                 let mut rng = StdRng::seed_from_u64(42);
                 test_with_distr_fn(
