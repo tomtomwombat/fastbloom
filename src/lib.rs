@@ -10,53 +10,6 @@ mod bit_vector;
 use bit_vector::BlockedBitVec;
 mod signature;
 
-/// Produces a new hash efficiently from two orignal hashes and a seed.
-///
-/// Modified from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>.
-#[inline]
-fn seeded_hash_from_hashes(h1: &mut u64, h2: &mut u64, seed: u64) -> u64 {
-    *h1 = h1.wrapping_add(*h2).rotate_left(5);
-    *h2 = h2.wrapping_add(seed);
-    *h1
-}
-
-/// The first two hashes of the value, h1 and h2.
-///
-/// Subsequent hashes, h, are efficiently derived from these two using `seeded_hash_from_hashes`.
-///
-/// This strategy is adapted from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>,
-/// in which a keyed hash function is used to generate two real hashes, h1 and h2, which are then used to produce
-/// many more "fake hahes" h, using h = h1 + i * h2.
-///
-/// However, here we only use 1 real hash, for performance, and derive h1 and h2:
-/// First, we'll think of the 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
-///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
-/// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
-/// For h1, we'll use the original upper bits 32 of the real hash.
-///     - h1 is the same as the real hash
-/// For h2 we'll use lower 32 bits of h, and multiply by a large prime
-///     - h2 is basically a "weak hash" of h1
-#[inline]
-pub(crate) fn get_orginal_hashes(
-    hasher: &impl BuildHasher,
-    val: &(impl Hash + ?Sized),
-) -> [u64; 2] {
-    let mut state = hasher.build_hasher();
-    val.hash(&mut state);
-    let h1 = state.finish();
-    let h2 = h1.wrapping_shr(32).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
-    [h1, h2]
-}
-
-/// Returns a the block index for an item's hash.
-/// The block index must be in the range `0..self.bits.num_blocks()`.
-/// This implementation is a more performant alternative to `hash % self.bits.num_blocks()`:
-/// <https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/>
-#[inline]
-pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
-    (((hash >> 32) as usize * num_blocks) >> 32) as usize
-}
-
 /// A space efficient approximate membership set data structure.
 /// False positives from [`contains`](Self::contains) are possible, but false negatives
 /// are not, i.e. [`contains`](Self::contains) for all items in the set is guaranteed to return
@@ -64,14 +17,24 @@ pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
 ///
 /// [`BloomFilter`] is supported by an underlying bit vector, chunked into
 /// [`512`](Self::builder), [`256`](Self::builder256), [`128`](Self::builder128), or [`64`](Self::builder64) bit "blocks", to track item membership.
-/// To insert, a number of bits, based on the item's hash, are set in the underlying bit vector.
-/// To check membership, a number of bits, based on the item's hash, are checked in the underlying bit vector.
+/// To insert, a number of bits are set at positions based on the item's hash in one of the underlying bit vector's block.
+/// To check membership, a number of bits are checked at positions based on the item's hash in one of the underlying bit vector's block.
 ///
 /// Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change.
 ///
 /// # Examples
 /// Basic usage:
+/// ```rust
+/// use fastbloom::BloomFilter;
+///
+/// let num_bits = 1024;
+///
+/// let mut filter = BloomFilter::builder(num_bits).expected_items(2);
+/// filter.insert("42");
+/// filter.insert("🦀");
 /// ```
+/// Instantiate from a collection of items:
+/// ```rust
 /// use fastbloom::BloomFilter;
 ///
 /// let num_bits = 1024;
@@ -81,7 +44,7 @@ pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
 /// assert!(filter.contains("🦀"));
 /// ```
 /// Use any hasher:
-/// ```
+/// ```rust
 /// use fastbloom::BloomFilter;
 /// use ahash::RandomState;
 ///
@@ -319,12 +282,12 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         self.target_hashes
     }
 
-    /// Returns the total number of in memory bits supporting the bloom filter.
+    /// Returns the total number of in-memory bits supporting the bloom filter.
     pub fn num_bits(&self) -> usize {
         self.num_blocks() * BLOCK_SIZE_BITS
     }
 
-    /// Returns the total number of in memory blocks supporting the bloom filter.
+    /// Returns the total number of in-memory blocks supporting the bloom filter.
     /// Each block is `BLOCK_SIZE_BITS` bits.
     pub fn num_blocks(&self) -> usize {
         self.bits.num_blocks()
@@ -349,6 +312,53 @@ impl PartialEq for BloomFilter {
     }
 }
 impl Eq for BloomFilter {}
+
+/// Produces a new hash efficiently from two orignal hashes and a seed.
+///
+/// Modified from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>.
+#[inline]
+fn seeded_hash_from_hashes(h1: &mut u64, h2: &mut u64, seed: u64) -> u64 {
+    *h1 = h1.wrapping_add(*h2).rotate_left(5);
+    *h2 = h2.wrapping_add(seed);
+    *h1
+}
+
+/// The first two hashes of the value, h1 and h2.
+///
+/// Subsequent hashes, h, are efficiently derived from these two using `seeded_hash_from_hashes`.
+///
+/// This strategy is adapted from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>,
+/// in which a keyed hash function is used to generate two real hashes, h1 and h2, which are then used to produce
+/// many more "fake hahes" h, using h = h1 + i * h2.
+///
+/// However, here we only use 1 real hash, for performance, and derive h1 and h2:
+/// First, we'll think of the 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
+///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
+/// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
+/// For h1, we'll use the original upper bits 32 of the real hash.
+///     - h1 is the same as the real hash
+/// For h2 we'll use lower 32 bits of h, and multiply by a large prime
+///     - h2 is basically a "weak hash" of h1
+#[inline]
+pub(crate) fn get_orginal_hashes(
+    hasher: &impl BuildHasher,
+    val: &(impl Hash + ?Sized),
+) -> [u64; 2] {
+    let mut state = hasher.build_hasher();
+    val.hash(&mut state);
+    let h1 = state.finish();
+    let h2 = h1.wrapping_shr(32).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
+    [h1, h2]
+}
+
+/// Returns a the block index for an item's hash.
+/// The block index must be in the range `0..self.bits.num_blocks()`.
+/// This implementation is a more performant alternative to `hash % self.bits.num_blocks()`:
+/// <https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/>
+#[inline]
+pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
+    (((hash >> 32) as usize * num_blocks) >> 32) as usize
+}
 
 #[cfg(test)]
 mod tests {

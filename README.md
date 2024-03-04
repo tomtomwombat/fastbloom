@@ -17,7 +17,7 @@ The fastest bloom filter in Rust. No accuracy compromises. Compatible with any h
 [dependencies]
 fastbloom = "0.2.0"
 ```
-
+Basic usage:
 ```rust
 use fastbloom::BloomFilter;
 

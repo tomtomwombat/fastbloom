@@ -92,7 +92,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
 
     /// "Consumes" this builder, using the provided `expected_num_items` to return an
     /// empty [`BloomFilter`]. The number of hashes is optimized based on `expected_num_items`
-    /// to reduce false positive accuracy.
+    /// to maximize bloom filter accuracy (minimize false positives chance on [`BloomFilter::contains`]).
     /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
     ///
     /// # Examples
@@ -109,8 +109,9 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     }
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
-    /// all values in `items`. The number of hashes per item is calculated
-    /// based on `items.len()` to minimize false positive rate.
+    /// all values in `items`. Like [`Builder::expected_items`], the number of hashes per item
+    /// is optimized based on `items.len()` to maximize bloom filter accuracy
+    /// (minimize false positives chance on [`BloomFilter::contains`]).
     ///
     /// # Examples
     ///
