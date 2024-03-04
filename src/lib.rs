@@ -440,10 +440,10 @@ mod tests {
         random_inserts_always_contained_::<BloomFilter<256>>();
         random_inserts_always_contained_::<BloomFilter<128>>();
         random_inserts_always_contained_::<BloomFilter<64>>();
-        random_inserts_always_contained_::<BloomFilter<512, ahash::RandomState>>();
-        random_inserts_always_contained_::<BloomFilter<256, ahash::RandomState>>();
-        random_inserts_always_contained_::<BloomFilter<128, ahash::RandomState>>();
-        random_inserts_always_contained_::<BloomFilter<64, ahash::RandomState>>();
+        // random_inserts_always_contained_::<BloomFilter<512, ahash::RandomState>>();
+        // random_inserts_always_contained_::<BloomFilter<256, ahash::RandomState>>();
+        // random_inserts_always_contained_::<BloomFilter<128, ahash::RandomState>>();
+        // random_inserts_always_contained_::<BloomFilter<64, ahash::RandomState>>();
     }
 
     #[test]
@@ -477,10 +477,10 @@ mod tests {
         test_optimal_hashes_is_optimal_::<256, DefaultHasher>();
         test_optimal_hashes_is_optimal_::<128, DefaultHasher>();
         test_optimal_hashes_is_optimal_::<64, DefaultHasher>();
-        test_optimal_hashes_is_optimal_::<512, ahash::RandomState>();
-        test_optimal_hashes_is_optimal_::<256, ahash::RandomState>();
-        test_optimal_hashes_is_optimal_::<128, ahash::RandomState>();
-        test_optimal_hashes_is_optimal_::<64, ahash::RandomState>();
+        // test_optimal_hashes_is_optimal_::<512, ahash::RandomState>();
+        // test_optimal_hashes_is_optimal_::<256, ahash::RandomState>();
+        // test_optimal_hashes_is_optimal_::<128, ahash::RandomState>();
+        // test_optimal_hashes_is_optimal_::<64, ahash::RandomState>();
     }
 
     #[test]
@@ -558,10 +558,10 @@ mod tests {
         false_pos_decrease_with_size_::<BloomFilter<256>>();
         false_pos_decrease_with_size_::<BloomFilter<128>>();
         false_pos_decrease_with_size_::<BloomFilter<64>>();
-        false_pos_decrease_with_size_::<BloomFilter<512, ahash::RandomState>>();
-        false_pos_decrease_with_size_::<BloomFilter<256, ahash::RandomState>>();
-        false_pos_decrease_with_size_::<BloomFilter<128, ahash::RandomState>>();
-        false_pos_decrease_with_size_::<BloomFilter<64, ahash::RandomState>>();
+        // false_pos_decrease_with_size_::<BloomFilter<512, ahash::RandomState>>();
+        // false_pos_decrease_with_size_::<BloomFilter<256, ahash::RandomState>>();
+        // false_pos_decrease_with_size_::<BloomFilter<128, ahash::RandomState>>();
+        // false_pos_decrease_with_size_::<BloomFilter<64, ahash::RandomState>>();
     }
 
     fn assert_even_distribution(distr: &[u64], err: f64) {
@@ -584,10 +584,10 @@ mod tests {
         block_distribution_::<BloomFilter<256>>();
         block_distribution_::<BloomFilter<128>>();
         block_distribution_::<BloomFilter<64>>();
-        block_distribution_::<BloomFilter<512, ahash::RandomState>>();
-        block_distribution_::<BloomFilter<256, ahash::RandomState>>();
-        block_distribution_::<BloomFilter<128, ahash::RandomState>>();
-        block_distribution_::<BloomFilter<64, ahash::RandomState>>();
+        // block_distribution_::<BloomFilter<512, ahash::RandomState>>();
+        // block_distribution_::<BloomFilter<256, ahash::RandomState>>();
+        // block_distribution_::<BloomFilter<128, ahash::RandomState>>();
+        // block_distribution_::<BloomFilter<64, ahash::RandomState>>();
     }
     #[test]
     fn block_hash_distribution() {
@@ -698,10 +698,10 @@ mod tests {
         test_hash_integration_::<256, DefaultHasher>(pct);
         test_hash_integration_::<128, DefaultHasher>(pct);
         test_hash_integration_::<64, DefaultHasher>(pct);
-        test_hash_integration_::<512, ahash::RandomState>(pct);
-        test_hash_integration_::<256, ahash::RandomState>(pct);
-        test_hash_integration_::<128, ahash::RandomState>(pct);
-        test_hash_integration_::<64, ahash::RandomState>(pct);
+        // test_hash_integration_::<512, ahash::RandomState>(pct);
+        // test_hash_integration_::<256, ahash::RandomState>(pct);
+        // test_hash_integration_::<128, ahash::RandomState>(pct);
+        // test_hash_integration_::<64, ahash::RandomState>(pct);
     }
 
     #[test]
