@@ -64,9 +64,12 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher.
 
 ### Runtime Performance
-TODO: filters optimized for max accuracy, more items means more hashes
+
 #### SipHash
-Runtime comparison to other bloom filter crates (all using SipHash). Note, as number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
+Runtime comparison to other bloom filter crates (all using SipHash).
+Note:
+- The number hashes for all bloom filters is derived to optimized accuracy, meaning less items in the bloom filters results in more hashes per item and generally slower performance on membership checks.
+- As number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
 > ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
 > ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
 
