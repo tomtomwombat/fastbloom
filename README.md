@@ -95,7 +95,7 @@ Many bloom filters will derive 24 positions based on 24 hashes of the item:
 - `hash23(item) & 64`
 
 `fastbloom` will derive a hash of the item with ~20 bits set and then add it to the bit vector with a bitwise OR:
-- `hash0(item) & hash1(item) | hash2(item) & hash2(item)`
+- `hash0(item) & hash1(item) | hash2(item) & hash3(item)`
 
 Thats 3 hashes versus 24!
 
