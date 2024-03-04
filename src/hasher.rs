@@ -116,3 +116,33 @@ impl Hasher for RandomDefaultHasher {
         self.0.write_isize(i)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::hasher::RandomDefaultHasher;
+    use siphasher::sip::SipHasher13;
+    use std::hash::Hasher;
+    fn hash_all(mut x: impl Hasher) -> u64 {
+        x.write(&[1; 16]);
+        x.write_u8(1);
+        x.write_u16(1);
+        x.write_u32(1);
+        x.write_u64(1);
+        x.write_u128(1);
+        x.write_usize(1);
+        x.write_i8(1);
+        x.write_i16(1);
+        x.write_i32(1);
+        x.write_i64(1);
+        x.write_i128(1);
+        x.write_isize(1);
+        x.finish()
+    }
+
+    #[test]
+    fn test_hasher() {
+        let h1 = RandomDefaultHasher::seeded(&[0; 16]);
+        let h2 = SipHasher13::new_with_key(&[0; 16]);
+        assert_eq!(hash_all(h1), hash_all(h2),);
+    }
+}
