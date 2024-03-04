@@ -141,4 +141,12 @@ mod tests {
             .hasher(RandomState::default())
             .hashes(4);
     }
+
+    #[test]
+    fn specified_hashes() {
+        for num_hashes in 1..1000 {
+            let b = BloomFilter::builder128(10).hashes(num_hashes);
+            assert_eq!(num_hashes, b.num_hashes());
+        }
+    }
 }
