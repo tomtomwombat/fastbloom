@@ -86,7 +86,23 @@ The fastbloom-rs crate (similarily named) uses xxhash, which faster than SipHash
 
 ### How it Works (WIP)
 
-Lets say our target hashes is .
+For a bloom filter with a bit vector of size 16, the desired number of hashes might be 13. This means that given an item, 13 (potentially overlapping) positions in the bit vector are checked or set.
+
+Many bloom filters will derive 13 positions based on 13 hashes of the item:
+- `hash0(item) & 16`
+- `hash1(item) & 16`
+- ...
+- `hash2(item) & 16`
+
+`fastbloom` will derive a hash of the item with ~9 bits set and then add it to the bit vector with a bitwise OR:
+- `hash0(item) | hash1(item) & hash2(item) & hash2(item)`
+
+Thats 4 hashes versus 13!
+
+Note:
+- Given 16 bits, and 13 hashes, a bit has probability $(15/16)^(13)$ to NOT be set, i.e. 0, after 13 hashes. The expected number of bits to be set for an item is $32 - (32 * (15/16)^(13)) ~= 9$.
+- `hashi(item)` provides us with roughly 8 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~4 set bits, `hash0(item) | hash1(item)` gives us ~12 set bits.
+
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
@@ -98,7 +114,6 @@ Lets say our target hashes is .
 
 ## License
 
-Licensed under either of
 
  * Apache License, Version 2.0
    ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
