@@ -280,6 +280,28 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::rngs::StdRng;
+    use rand::Rng;
+    use rand::SeedableRng;
+
+    #[test]
+    fn test_num_bits() {
+        let mut rng = StdRng::seed_from_u64(42);
+        for target_bits in 1..=32 {
+            let trials = 10_000;
+            let mut total_bits = 0;
+            for _ in 0..trials {
+                let mut h1 = rng.gen();
+                let mut h2 = rng.gen();
+                let h = signature(&mut h1, &mut h2, target_bits);
+                total_bits += h.count_ones();
+            }
+            assert_eq!(
+                ((total_bits as f64) / (trials as f64)).round() as u64,
+                target_bits
+            )
+        }
+    }
 
     #[test]
     fn hash_creation() {
