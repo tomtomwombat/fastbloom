@@ -84,25 +84,26 @@ The fastbloom-rs crate (similarily named) uses xxhash, which faster than SipHash
 > ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 > The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers who do NOT exist in the control hash set but do report as existing in the bloom filter.
 
-### How it Works (WIP)
+### How it Works
 
-For a bloom filter with a bit vector of size 16, the desired number of hashes might be 13. This means that given an item, 13 (potentially overlapping) positions in the bit vector are checked or set.
+For a bloom filter with a bit vector of size 64, the desired number of hashes might be 24. This means that given an item, 24 (potentially overlapping) positions in the bit vector are checked or set.
 
-Many bloom filters will derive 13 positions based on 13 hashes of the item:
-- `hash0(item) & 16`
-- `hash1(item) & 16`
+Many bloom filters will derive 24 positions based on 24 hashes of the item:
+- `hash0(item) & 64`
+- `hash1(item) & 64`
 - ...
-- `hash2(item) & 16`
+- `hash23(item) & 64`
 
-`fastbloom` will derive a hash of the item with ~9 bits set and then add it to the bit vector with a bitwise OR:
-- `hash0(item) | hash1(item) & hash2(item) & hash2(item)`
+`fastbloom` will derive a hash of the item with ~20 bits set and then add it to the bit vector with a bitwise OR:
+- `hash0(item) & hash1(item) | hash2(item) & hash2(item)`
 
-Thats 4 hashes versus 13!
+Thats 3 hashes versus 24!
 
 Note:
-- Given 16 bits, and 13 hashes, a bit has probability $(15/16)^(13)$ to NOT be set, i.e. 0, after 13 hashes. The expected number of bits to be set for an item is $32 - (32 * (15/16)^(13)) ~= 9$.
-- `hashi(item)` provides us with roughly 8 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~4 set bits, `hash0(item) | hash1(item)` gives us ~12 set bits.
+- Given 64 bits, and 24 hashes, a bit has probability ${\frac {63} {64}}^{24}$ to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is $64 - (64 * {\frac {63} {64}}^{24}) ~= 20$.
+- A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits.
 
+In reality, the bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on and number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for rounding errors.
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
