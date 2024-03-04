@@ -63,13 +63,6 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 
 `fastbloom`'s default hasher is SipHash-1-3 using randomized keys, but can be seeded or configured to use any hasher.
 
-### How it Works (WIP)
-The underlying bit vector of our bloom filter is initially 0s.
-|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|
-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|
-
-Lets say our target hashes is .
-
 ### Runtime Performance
 
 #### SipHash
@@ -89,8 +82,11 @@ The fastbloom-rs crate (similarily named) uses xxhash, which faster than SipHash
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
 > ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
+> The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers who do NOT exist in the control hash set but do report as existing in the bloom filter.
 
+### How it Works (WIP)
 
+Lets say our target hashes is .
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
