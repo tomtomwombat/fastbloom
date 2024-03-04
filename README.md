@@ -98,6 +98,29 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 ### How it Works
 
+`fastbloom` attributes it's performance to two insights:
+1. Only one real hash per item is needed, subsequent hashes can be cheaply derived
+2. Many bit positions can be derived from subsequent hashes
+
+#### One Real Hash Per Item
+The item is hashed once, producing the "real" hash. Two original hashes are derived:
+1. The first is the real hash
+2. The second is the last 32 bits for the first hash multiplied by a prime number
+
+Subsequent hashes are derived by a common technique [explained in depth in this paper.](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
+The ith subsequent hash is derived by mixing the first two:
+```rust, ignore
+*hash1 = hash1.wrapping_add(*h2).rotate_left(5);
+*hash2 = hash2.wrapping_add(i);
+return *hash1
+```
+
+#### Many Bit Positions Derived from Subsequent Hashes
+
+Instead of deriving a single bit position per hash, a hash with ~N 1 bits set can be formed by chaining bitwise AND and OR operations of the subsequent hashes.
+
+##### Example
+
 For a bloom filter with a bit vector of size 64 and desired hashes 24, 24 (potentially overlapping) positions in the bit vector are set or checked for each item on insertion or membership check respectively.
 
 Other bloom filters derive 24 positions based on 24 hashes of the item:
