@@ -57,9 +57,13 @@ mod signature;
 #[derive(Debug, Clone)]
 pub struct BloomFilter<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
     bits: BlockedBitVec<BLOCK_SIZE_BITS>,
+    /// The total target hashes per item that is specified by user or optimized to maximize accuracy
     target_hashes: u64,
-    num_hashes: u64,
+    /// The target number of bits to set/check per u64 per item when inserting/checking an item.
     num_rounds: Option<u64>,
+    /// The number of hashes per item in addition to `num_rounds`. These hashes can be applied across many `u64`s in a block.
+    /// These hashes are in addition to `num_rounds` to make up for rounding errors.
+    num_hashes: u64,
     hasher: S,
 }
 
