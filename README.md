@@ -86,24 +86,24 @@ The fastbloom-rs crate (similarily named) uses xxhash, which faster than SipHash
 
 ### How it Works
 
-For a bloom filter with a bit vector of size 64, the desired number of hashes might be 24. This means that given an item, 24 (potentially overlapping) positions in the bit vector are checked or set.
+For a bloom filter with a bit vector of size 64 and desired hashes 24, 24 (potentially overlapping) positions in the bit vector are set or checked for each item on insertion or membership check respectively.
 
-Many bloom filters will derive 24 positions based on 24 hashes of the item:
-- `hash0(item) & 64`
-- `hash1(item) & 64`
+Other bloom filters derive 24 positions based on 24 hashes of the item:
+- `hash0(item) % 64`
+- `hash1(item) % 64`
 - ...
-- `hash23(item) & 64`
+- `hash23(item) % 64`
 
-`fastbloom` will derive a hash of the item with ~20 bits set and then add it to the bit vector with a bitwise OR:
+Instead, `fastbloom` derives a hash of the item with ~20 bits set and then adds it to the bit vector with a bitwise OR:
 - `hash0(item) & hash1(item) | hash2(item) & hash3(item)`
 
 Thats 3 hashes versus 24!
 
 Note:
 - Given 64 bits, and 24 hashes, a bit has probability ${\frac {63} {64}}^{24}$ to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is $64 - (64 * {\frac {63} {64}}^{24}) ~= 20$.
-- A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits.
+- A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits, etc.
 
-In reality, the bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on and number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for rounding errors.
+In reality, the bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on and number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
