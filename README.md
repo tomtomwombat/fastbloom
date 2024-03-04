@@ -50,7 +50,7 @@ let filter = BloomFilter::builder(num_bits)
 ```
 
 ### Background
-Bloom filters are a space efficient approximate membership set data structures. False positives from a membership check are possible, but false negatives are not. [See more](https://en.wikipedia.org/wiki/Bloom_filter).
+Bloom filters are space efficient approximate membership set data structures. False positives from a membership check are possible, but false negatives are not. [See more](https://en.wikipedia.org/wiki/Bloom_filter).
 
 Blocked bloom filters are supported by an underlying bit vector, chunked into 512, 256, 128, or 64 bit "blocks", to track item membership. To insert, a number of bits are set at positions based on the item's hash in one of the underlying bit vector's block. To check membership, a number of bits are checked at positions based on the item's hash in one of the underlying bit vector's block. [See more on blocked bloom filters](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf).
 
