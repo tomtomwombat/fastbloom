@@ -77,7 +77,7 @@ Once constructed, neither the bloom filter's underlying memory usage nor number 
 #### SipHash
 Runtime comparison to other bloom filter crates (all using SipHash).
 Note:
-- The number hashes for all bloom filters is derived to optimized accuracy, meaning less items in the bloom filters results in more hashes per item and generally slower performance on membership checks.
+- The number hashes for all bloom filters is derived to optimize accuracy, meaning fewer items in the bloom filters result in more hashes per item and generally slower performance.
 - As number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
 > ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
 > ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
@@ -98,8 +98,8 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 ### How it Works
 
-`fastbloom` attributes it's performance to two insights:
-1. Only one real hash per item is needed, subsequent hashes can be cheaply derived
+`fastbloom` attributes its performance to two insights:
+1. Only one real hash per item is needed, subsequent hashes can be cheaply derived from the real hash
 2. Many bit positions can be derived from subsequent hashes
 
 #### One Real Hash Per Item
