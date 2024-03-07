@@ -103,14 +103,6 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
         block[index] |= bit;
     }
 
-    /// Sets all indexes for the given block.
-    #[inline]
-    pub fn set_all_for_block(block: &mut [u64], bit_indexes: impl Iterator<Item = usize>) {
-        for bit_index in bit_indexes {
-            Self::set_for_block(block, bit_index);
-        }
-    }
-
     /// Returns true if the `bit_index`th in the block is 1.
     #[inline]
     pub fn check_for_block(block: &[u64], bit_index: usize) -> bool {
@@ -118,13 +110,9 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
         block[index] & bit > 0
     }
 
-    /// Returns true if all bit indexes are set for the given block.
     #[inline]
-    pub fn check_all_for_block(
-        block: &[u64],
-        mut bit_indexes: impl Iterator<Item = usize>,
-    ) -> bool {
-        bit_indexes.all(|bit_index| Self::check_for_block(block, bit_index))
+    pub fn as_raw(&self) -> &[u64] {
+        &self.bits
     }
 }
 

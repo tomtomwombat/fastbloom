@@ -1,4 +1,4 @@
-use super::seeded_hash_from_hashes;
+use super::next_hash;
 
 #[inline]
 pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
@@ -6,7 +6,6 @@ pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
         / f64::ln(63.0f64 / 64.0f64)
 }
 
-/// The number of bitwise operations needed to compute [`signature`] for `bits`
 #[inline]
 pub(crate) fn work(bits: u64) -> u64 {
     match bits {
@@ -56,200 +55,201 @@ pub(crate) fn work(bits: u64) -> u64 {
 /// we can use "signatures" to quickly get many index bits, and use traditional
 /// index setting for the remainder of hashes.
 #[inline]
-pub(crate) fn signature(h1: &mut u64, h2: &mut u64, num_bits: u64) -> u64 {
-    let mut d = seeded_hash_from_hashes(h1, h2, 0);
+pub(crate) fn signature(h1: &mut u64, h2: u64, num_bits: u64) -> u64 {
+    let mut d = next_hash(h1, h2);
     match num_bits {
         1 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         2 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         3 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         4 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         5 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         6 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         7 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         8 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         9 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         10 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         11 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         12 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         13 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         14 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         15 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         16 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
+            d &= next_hash(h1, h2);
         }
         17 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         18 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         19 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         20 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         21 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         22 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         23 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         24 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         25 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         26 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         27 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d &= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         28 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d &= seeded_hash_from_hashes(h1, h2, 3);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         29 => {
-            d &= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d &= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         30 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d &= seeded_hash_from_hashes(h1, h2, 4);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
         31 => {
-            d |= seeded_hash_from_hashes(h1, h2, 1);
-            d |= seeded_hash_from_hashes(h1, h2, 2);
-            d |= seeded_hash_from_hashes(h1, h2, 3);
-            d |= seeded_hash_from_hashes(h1, h2, 4);
-            d &= seeded_hash_from_hashes(h1, h2, 5);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d |= next_hash(h1, h2);
+            d &= next_hash(h1, h2);
         }
+        32 => {}
         _ => {}
     }
     d
@@ -257,10 +257,15 @@ pub(crate) fn signature(h1: &mut u64, h2: &mut u64, num_bits: u64) -> u64 {
 
 pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64, Option<u64>) {
     let num_u64s_per_block = (block_size as u64 / 64) as f64;
-    let mut num_hashes = total_num_hashes.round() as u64;
+    let mut num_hashes = if block_size == 512 {
+        total_num_hashes.round() as u64
+    } else {
+        total_num_hashes.floor() as u64
+    };
     let mut num_rounds = None;
 
-    for target_bits_per_u64_per_item in 1..=32 {
+    // We will not accept rounds less than 16 because the variance is too high, and bits may be 0, which is bad for false positives
+    for target_bits_per_u64_per_item in 16..=32 {
         let hashes_covered = hashes_for_bits(target_bits_per_u64_per_item);
         let remaining = (total_num_hashes - (hashes_covered * num_u64s_per_block)).round();
         if remaining < 0.0 {
@@ -292,8 +297,8 @@ mod test {
             let mut total_bits = 0;
             for _ in 0..trials {
                 let mut h1 = rng.gen();
-                let mut h2 = rng.gen();
-                let h = signature(&mut h1, &mut h2, target_bits);
+                let h2 = rng.gen();
+                let h = signature(&mut h1, h2, target_bits);
                 total_bits += h.count_ones();
             }
             assert_eq!(

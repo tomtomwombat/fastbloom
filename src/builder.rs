@@ -9,7 +9,7 @@ use crate::signature;
 /// via the builder pattern.
 #[derive(Debug, Clone)]
 pub struct Builder<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
-    pub(crate) num_blocks: usize,
+    pub(crate) data: BlockedBitVec<BLOCK_SIZE_BITS>,
     pub(crate) hasher: S,
 }
 
@@ -44,7 +44,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// ```
     pub fn hasher<H: BuildHasher>(self, hasher: H) -> Builder<BLOCK_SIZE_BITS, H> {
         Builder::<BLOCK_SIZE_BITS, H> {
-            num_blocks: self.num_blocks,
+            data: self.data,
             hasher,
         }
     }
@@ -59,7 +59,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     ///
     /// let bloom = BloomFilter::builder(1024).hashes(4);
     /// ```
-    pub fn hashes(self, num_hashes: u64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+    pub fn hashes(self, num_hashes: u32) -> BloomFilter<BLOCK_SIZE_BITS, S> {
         self.hashes_f(num_hashes as f64)
     }
 
@@ -82,7 +82,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
             signature::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
 
         BloomFilter {
-            bits: BlockedBitVec::<BLOCK_SIZE_BITS>::new(self.num_blocks).unwrap(),
+            bits: self.data,
             target_hashes: total_num_hashes as u64,
             num_hashes,
             num_rounds,
@@ -103,7 +103,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     /// let bloom = BloomFilter::builder(1024).expected_items(500);
     /// ```
     pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let items_per_block = expected_num_items as f64 / self.num_blocks as f64;
+        let items_per_block = expected_num_items as f64 / self.data.num_blocks() as f64;
         let num_hashes = BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(items_per_block);
         self.hashes_f(num_hashes)
     }
@@ -137,8 +137,21 @@ mod tests {
     use ahash::RandomState;
 
     #[test]
+    fn data_size() {
+        let size_bits = 512 * 1000;
+        let bloom = BloomFilter::<512>::builder_from_bits(size_bits).hashes(4);
+        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        let bloom = BloomFilter::<256>::builder_from_bits(size_bits).hashes(4);
+        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        let bloom = BloomFilter::<128>::builder_from_bits(size_bits).hashes(4);
+        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        let bloom = BloomFilter::<64>::builder_from_bits(size_bits).hashes(4);
+        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+    }
+
+    #[test]
     fn api() {
-        let _bloom = BloomFilter::builder128(10)
+        let _bloom = BloomFilter::<64>::builder_from_bits(10)
             .hasher(RandomState::default())
             .hashes(4);
     }
@@ -146,7 +159,7 @@ mod tests {
     #[test]
     fn specified_hashes() {
         for num_hashes in 1..1000 {
-            let b = BloomFilter::builder128(10).hashes(num_hashes);
+            let b = BloomFilter::<128>::builder_from_bits(1).hashes(num_hashes);
             assert_eq!(num_hashes, b.num_hashes());
         }
     }

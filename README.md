@@ -79,21 +79,21 @@ Runtime comparison to other bloom filter crates (all using SipHash).
 Note:
 - The number hashes for all bloom filters is derived to optimize accuracy, meaning fewer items in the bloom filters result in more hashes per item and generally slower performance.
 - As number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
-> ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
-> ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
+![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
+![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
 
 
 #### Any Hash Goes
 The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use a similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
-> ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/9bf303fd-897d-412b-9f42-c57e6460ead0)
-> ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/060e739b-7fb2-4c18-8086-7034f6fb92c0)
+![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/9bf303fd-897d-412b-9f42-c57e6460ead0)
+![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/060e739b-7fb2-4c18-8086-7034f6fb92c0)
 
 
 
 ### False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
-> ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
+![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 > The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers that do NOT exist in the control hash set but do report as existing in the bloom filter.
 
 ### How it Works
@@ -105,13 +105,12 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 #### One Real Hash Per Item
 The item is hashed once, producing the "real" hash. Two original hashes are derived:
 1. The first is the real hash
-2. The second is the last 32 bits for the first hash multiplied by a prime number
+2. The second is the last 32 bits for the first hash multiplied by constant number
 
 Subsequent hashes are derived by a common technique [explained in depth in this paper.](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
 The ith subsequent hash is derived by mixing the first two:
 ```rust, ignore
-*hash1 = hash1.wrapping_add(*h2).rotate_left(5);
-*hash2 = hash2.wrapping_add(i);
+*hash1 = hash1.wrapping_add(hash2).rotate_left(5);
 return *hash1
 ```
 
@@ -135,7 +134,7 @@ Instead, `fastbloom` derives a hash of the item with ~20 bits set and then adds 
 That's 4 hashes versus 24!
 
 Note:
-- Given 64 bits, and 24 hashes, a bit has probability ${\frac {63} {64}}^{24}$ to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is $64 - (64 * {\frac {63} {64}}^{24}) ~= 20$.
+- Given 64 bits, and 24 hashes, a bit has probability (63/64)^24 to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is 64 - (64 * (63/64)^24) ~= 20.
 - A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits, etc.
 
 In reality, the bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on, and the number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.

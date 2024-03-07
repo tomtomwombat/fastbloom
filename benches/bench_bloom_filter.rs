@@ -40,7 +40,8 @@ fn run_bench_for<T: Container<String>>(
     );
 }
 fn bench(c: &mut Criterion) {
-    // list_fp::<fastbloom::BloomFilter<512>>();
+    list_fp::<fastbloom::BloomFilter<512>>();
+
     let sample_seed = 1234;
     let num_bytes = 262144;
     for seed in [1234, 9876] {
@@ -59,9 +60,9 @@ fn bench(c: &mut Criterion) {
             // 5000, 7500, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512>>(&mut group, num_items, seed);
-            run_bench_for::<bloom::BloomFilter>(&mut group, num_items, seed);
-            run_bench_for::<Bloom<String>>(&mut group, num_items, seed);
-            run_bench_for::<ProbBloomFilter<String>>(&mut group, num_items, seed);
+            // run_bench_for::<bloom::BloomFilter>(&mut group, num_items, seed);
+            // run_bench_for::<Bloom<String>>(&mut group, num_items, seed);
+            // run_bench_for::<ProbBloomFilter<String>>(&mut group, num_items, seed);
         }
         group.finish();
         let mut g2 = c.benchmark_group(&format!(
@@ -77,7 +78,7 @@ fn bench(c: &mut Criterion) {
             run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
                 &mut g2, num_items, seed,
             );
-            run_bench_for::<fastbloom_rs::BloomFilter>(&mut g2, num_items, seed);
+            // run_bench_for::<fastbloom_rs::BloomFilter>(&mut g2, num_items, seed);
         }
         g2.finish();
     }
@@ -184,6 +185,69 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<512, H> {
         items: I,
     ) -> Self {
         BloomFilter::builder(num_bits)
+            .hasher(H::default())
+            .items(items)
+    }
+    fn name() -> &'static str {
+        "fastbloom"
+    }
+}
+
+impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<256, H> {
+    #[inline]
+    fn check(&self, s: &X) -> bool {
+        self.contains(s)
+    }
+    fn num_hashes(&self) -> usize {
+        self.num_hashes() as usize
+    }
+    fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
+        num_bits: usize,
+        items: I,
+    ) -> Self {
+        BloomFilter::builder256(num_bits)
+            .hasher(H::default())
+            .items(items)
+    }
+    fn name() -> &'static str {
+        "fastbloom"
+    }
+}
+
+impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<128, H> {
+    #[inline]
+    fn check(&self, s: &X) -> bool {
+        self.contains(s)
+    }
+    fn num_hashes(&self) -> usize {
+        self.num_hashes() as usize
+    }
+    fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
+        num_bits: usize,
+        items: I,
+    ) -> Self {
+        BloomFilter::builder128(num_bits)
+            .hasher(H::default())
+            .items(items)
+    }
+    fn name() -> &'static str {
+        "fastbloom"
+    }
+}
+
+impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<64, H> {
+    #[inline]
+    fn check(&self, s: &X) -> bool {
+        self.contains(s)
+    }
+    fn num_hashes(&self) -> usize {
+        self.num_hashes() as usize
+    }
+    fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = X>>>(
+        num_bits: usize,
+        items: I,
+    ) -> Self {
+        BloomFilter::builder64(num_bits)
             .hasher(H::default())
             .items(items)
     }
