@@ -98,9 +98,11 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 ### Comparing Block Sizes: 64, 128, 256, and 512 Bits
 
-`fastbloom` offers 4 different block sizes. 512 bits is the default. Larger block sizes have slower performance but are more accurate.
+`fastbloom` offers 4 different block sizes. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
 
 #### Runtime Performance
+![member-fastbloom-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/1e17d334-4556-45f1-9957-bfafe78cb9a2)
+![non-member-fastbloom-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/14d980ed-1acf-4ec3-b7c0-ff282b4d6f9a)
 
 
 #### Accuracy
