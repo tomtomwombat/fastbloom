@@ -40,8 +40,7 @@ fn run_bench_for<T: Container<String>>(
     );
 }
 fn bench(c: &mut Criterion) {
-    list_fp::<fastbloom::BloomFilter<512>>();
-
+    // list_fp::<fastbloom::BloomFilter<64>>();
     let sample_seed = 1234;
     let num_bytes = 262144;
     for seed in [1234, 9876] {
@@ -50,6 +49,8 @@ fn bench(c: &mut Criterion) {
         } else {
             "Non-Member"
         };
+
+        /*
         let mut group = c.benchmark_group(&format!(
             "{} Check Speed vs Items in Bloom Filter ({}Kb Allocated, SipHash)",
             item_type,
@@ -81,6 +82,31 @@ fn bench(c: &mut Criterion) {
             // run_bench_for::<fastbloom_rs::BloomFilter>(&mut g2, num_items, seed);
         }
         g2.finish();
+        */
+        let mut g3 = c.benchmark_group(&format!(
+            "{} Check Speed vs Items in Bloom Filter ({}Kb Allocated)",
+            item_type,
+            num_bytes / 1000
+        ));
+        g3.plot_config(PlotConfiguration::default());
+        for num_items in [
+            1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000, 15_000, 20_000, 25_000,
+            50_000,
+        ] {
+            run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
+                &mut g3, num_items, seed,
+            );
+            run_bench_for::<fastbloom::BloomFilter<256, ahash::RandomState>>(
+                &mut g3, num_items, seed,
+            );
+            run_bench_for::<fastbloom::BloomFilter<128, ahash::RandomState>>(
+                &mut g3, num_items, seed,
+            );
+            run_bench_for::<fastbloom::BloomFilter<64, ahash::RandomState>>(
+                &mut g3, num_items, seed,
+            );
+        }
+        g3.finish();
     }
 }
 
@@ -189,7 +215,7 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<512, H> {
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom"
+        "fastbloom - 512"
     }
 }
 
@@ -205,12 +231,12 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<256, H> {
         num_bits: usize,
         items: I,
     ) -> Self {
-        BloomFilter::builder256(num_bits)
+        BloomFilter::<256>::builder_from_bits(num_bits)
             .hasher(H::default())
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom"
+        "fastbloom - 256"
     }
 }
 
@@ -226,12 +252,12 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<128, H> {
         num_bits: usize,
         items: I,
     ) -> Self {
-        BloomFilter::builder128(num_bits)
+        BloomFilter::<128>::builder_from_bits(num_bits)
             .hasher(H::default())
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom"
+        "fastbloom - 128"
     }
 }
 
@@ -247,12 +273,12 @@ impl<X: Hash, H: BuildHasher + Default> Container<X> for BloomFilter<64, H> {
         num_bits: usize,
         items: I,
     ) -> Self {
-        BloomFilter::builder64(num_bits)
+        BloomFilter::<64>::builder_from_bits(num_bits)
             .hasher(H::default())
             .items(items)
     }
     fn name() -> &'static str {
-        "fastbloom"
+        "fastbloom - 64"
     }
 }
 
