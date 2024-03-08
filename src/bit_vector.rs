@@ -116,6 +116,18 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     }
 }
 
+impl<const BLOCK_SIZE_BITS: usize> From<Vec<u64>> for BlockedBitVec<BLOCK_SIZE_BITS> {
+    fn from(mut bits: Vec<u64>) -> Self {
+        let num_u64s_per_block = BLOCK_SIZE_BITS / 64;
+        let r = bits.len() % num_u64s_per_block;
+        if r != 0 {
+            bits.extend(vec![0; num_u64s_per_block - r]);
+        }
+        bits.shrink_to_fit();
+        Self { bits }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

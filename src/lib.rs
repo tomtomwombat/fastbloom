@@ -77,16 +77,15 @@ impl BloomFilter {
         }
     }
 
-    /*
-    fn new_builder_from_raw<const BLOCK_SIZE_BITS: usize>(raw: []) -> Builder<BLOCK_SIZE_BITS> {
-        assert!(num_bits > 0);
-        let num_blocks = num_bits.div_ceil(BLOCK_SIZE_BITS);
+    fn new_builder_from_vec<const BLOCK_SIZE_BITS: usize>(
+        vec: Vec<u64>,
+    ) -> Builder<BLOCK_SIZE_BITS> {
+        assert!(!vec.is_empty());
         Builder::<BLOCK_SIZE_BITS> {
-            num_blocks,
+            data: vec.into(),
             hasher: Default::default(),
         }
     }
-    */
 
     /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
     /// with `num_bits` number of bits for tracking item membership.
@@ -112,11 +111,19 @@ impl BloomFilter<64, DefaultHasher> {
     pub fn builder_from_bits(num_bits: usize) -> Builder<64> {
         BloomFilter::new_builder::<64>(num_bits)
     }
+
+    pub fn builder_from_vec(vec: Vec<u64>) -> Builder<64> {
+        BloomFilter::new_builder_from_vec::<64>(vec)
+    }
 }
 
 impl BloomFilter<128, DefaultHasher> {
     pub fn builder_from_bits(num_bits: usize) -> Builder<128> {
         BloomFilter::new_builder::<128>(num_bits)
+    }
+
+    pub fn builder_from_vec(vec: Vec<u64>) -> Builder<128> {
+        BloomFilter::new_builder_from_vec::<128>(vec)
     }
 }
 
@@ -124,11 +131,19 @@ impl BloomFilter<256, DefaultHasher> {
     pub fn builder_from_bits(num_bits: usize) -> Builder<256> {
         BloomFilter::new_builder::<256>(num_bits)
     }
+
+    pub fn builder_from_vec(vec: Vec<u64>) -> Builder<256> {
+        BloomFilter::new_builder_from_vec::<256>(vec)
+    }
 }
 
 impl BloomFilter<512, DefaultHasher> {
     pub fn builder_from_bits(num_bits: usize) -> Builder<512> {
         BloomFilter::new_builder::<512>(num_bits)
+    }
+
+    pub fn builder_from_vec(vec: Vec<u64>) -> Builder<512> {
+        BloomFilter::new_builder_from_vec::<512>(vec)
     }
 }
 
@@ -231,7 +246,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
 
     /// Returns a u64 slice of this `BloomFilter`’s contents.
     #[inline]
-    pub fn as_raw(&self) -> &[u64] {
+    pub fn as_slice(&self) -> &[u64] {
         self.bits.as_raw()
     }
 }
@@ -248,7 +263,7 @@ where
     }
 }
 
-impl PartialEq for BloomFilter {
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq for BloomFilter<BLOCK_SIZE_BITS, S> {
     fn eq(&self, other: &Self) -> bool {
         self.bits == other.bits && self.num_hashes == other.num_hashes
     }
@@ -371,6 +386,24 @@ mod tests {
                 })
                 .collect()
         }
+    }
+
+    #[test]
+    fn test_to_from_vec() {
+        fn to_from_<const N: usize>() {
+            let vals = random_numbers(100, 42);
+            let mut b = BloomFilter::new_builder::<N>(10090).seed(&1).hashes(3);
+            b.extend(vals.clone());
+            let x = b.as_slice();
+            let b2 = BloomFilter::new_builder_from_vec::<N>(x.to_vec())
+                .seed(&1)
+                .hashes(3);
+            assert_eq!(b, b2);
+        }
+        to_from_::<64>();
+        to_from_::<128>();
+        to_from_::<256>();
+        to_from_::<512>();
     }
 
     #[test]

@@ -140,13 +140,13 @@ mod tests {
     fn data_size() {
         let size_bits = 512 * 1000;
         let bloom = BloomFilter::<512>::builder_from_bits(size_bits).hashes(4);
-        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        assert_eq!(bloom.as_slice().len() * 64, size_bits);
         let bloom = BloomFilter::<256>::builder_from_bits(size_bits).hashes(4);
-        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        assert_eq!(bloom.as_slice().len() * 64, size_bits);
         let bloom = BloomFilter::<128>::builder_from_bits(size_bits).hashes(4);
-        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        assert_eq!(bloom.as_slice().len() * 64, size_bits);
         let bloom = BloomFilter::<64>::builder_from_bits(size_bits).hashes(4);
-        assert_eq!(bloom.as_raw().len() * 64, size_bits);
+        assert_eq!(bloom.as_slice().len() * 64, size_bits);
     }
 
     #[test]
