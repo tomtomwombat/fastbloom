@@ -7,6 +7,18 @@ use crate::signature;
 ///
 /// This type can be used to construct an instance of [`BloomFilter`]
 /// via the builder pattern.
+///
+/// 1. First, the `Builder` is initialized from some specification of underlying memory, either number of bits or raw vec data:
+/// - [`BloomFilter::builder`]
+/// - [`BloomFilter::<512>::builder_from_bits`]
+/// - [`BloomFilter::<512>::builder_from_vec`]
+/// 2. Some optional modifications can be made, such as setting the seed (only for [`DefaultHasher`]) or setting the hasher:
+/// - [`Builder::seed`]
+/// - [`Builder::hashes`]
+/// 3. Lastly, the builder is "consumed" and a [`BloomFilter`] is built from a direct or indirect specification for number of hashes:
+/// - [`Builder::hashes`]
+/// - [`Builder::expected_items`]
+/// - [`Builder::items`]
 #[derive(Debug, Clone)]
 pub struct Builder<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
     pub(crate) data: BlockedBitVec<BLOCK_SIZE_BITS>,
