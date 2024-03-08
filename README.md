@@ -96,6 +96,16 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 > The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers that do NOT exist in the control hash set but do report as existing in the bloom filter.
 
+### Comparing Block Sizes: 64, 128, 256, and 512 Bits
+
+`fastbloom` offers 4 different block sizes. 512 bits is the default. Larger block sizes have slower performance but are more accurate.
+
+#### Runtime Performance
+
+
+#### Accuracy
+![fastbloom-block-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/c8e88ddb-3617-4d85-8f76-b606b4e98e13)
+
 ### How it Works
 
 `fastbloom` attributes its performance to two insights:
