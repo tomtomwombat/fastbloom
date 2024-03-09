@@ -41,6 +41,7 @@ fn run_bench_for<T: Container<String>>(
 }
 fn bench(c: &mut Criterion) {
     // list_fp::<fastbloom::BloomFilter<64>>();
+
     let sample_seed = 1234;
     let num_bytes = 262144;
     for seed in [1234, 9876] {
@@ -90,8 +91,7 @@ fn bench(c: &mut Criterion) {
         ));
         g3.plot_config(PlotConfiguration::default());
         for num_items in [
-            1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000, 15_000, 20_000, 25_000,
-            50_000,
+            2000, 5000, 10_000, 15_000, 20_000, 25_000, 50_000, 75_000, 100_000,
         ] {
             run_bench_for::<fastbloom::BloomFilter<512, ahash::RandomState>>(
                 &mut g3, num_items, seed,

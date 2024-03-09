@@ -111,7 +111,7 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     }
 
     #[inline]
-    pub fn as_raw(&self) -> &[u64] {
+    pub fn as_slice(&self) -> &[u64] {
         &self.bits
     }
 }

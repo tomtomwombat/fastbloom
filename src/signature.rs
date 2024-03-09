@@ -264,8 +264,14 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
     };
     let mut num_rounds = None;
 
-    // We will not accept rounds less than 16 because the variance is too high, and bits may be 0, which is bad for false positives
-    for target_bits_per_u64_per_item in 16..=32 {
+    // We will not accept rounds too low the variance is too high, and bits may be 0, which is bad for false positives.
+    // TODO: a more precise formula for this
+    let min_target_bits = match block_size {
+        512 => 8,
+        _ => 16,
+    };
+
+    for target_bits_per_u64_per_item in min_target_bits..=32 {
         let hashes_covered = hashes_for_bits(target_bits_per_u64_per_item);
         let remaining = (total_num_hashes - (hashes_covered * num_u64s_per_block)).round();
         if remaining < 0.0 {

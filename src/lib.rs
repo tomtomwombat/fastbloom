@@ -86,13 +86,17 @@ impl BloomFilter {
         }
     }
 
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter`
     /// with `num_bits` number of bits for tracking item membership.
     ///
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 512 bits.
+    /// The `BloomFilter` built from the returned builder will have a block size of 512 bits.
     ///
-    /// Use [`BloomFilter::<256>::builder_from_bits`], [`BloomFilter::<128>::builder_from_bits`], or [`BloomFilter::<64>::builder_from_bits`] for more speed
-    /// but slightly higher false positive rates.
+    /// Use either
+    /// - [`BloomFilter::<256>::builder_from_bits`]
+    /// - [`BloomFilter::<128>::builder_from_bits`]
+    /// - [`BloomFilter::<64>::builder_from_bits`]
+    ///
+    /// for more speed but slightly higher false positive rates.
     ///
     /// # Examples
     ///
@@ -107,12 +111,12 @@ impl BloomFilter {
 }
 
 impl BloomFilter<64, DefaultHasher> {
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter`
     /// with `num_bits` number of bits for tracking item membership.
     ///
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 64 bits.
+    /// The `BloomFilter` built from the returned builder will have a block size of 64 bits.
     ///
-    /// [`BloomFilter<64>`] is faster but less accurate than [`BloomFilter<128>`]
+    /// `BloomFilter<64>` is faster but less accurate than `BloomFilter<128>`
     ///
     /// # Examples
     ///
@@ -125,8 +129,8 @@ impl BloomFilter<64, DefaultHasher> {
         BloomFilter::new_builder::<64>(num_bits)
     }
 
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`] initialized with bit vector `bit_vec`.
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 64 bits.
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+    /// The `BloomFilter` built from the returned builder will have a block size of 64 bits.
     ///
     /// # Examples
     ///
@@ -141,12 +145,12 @@ impl BloomFilter<64, DefaultHasher> {
 }
 
 impl BloomFilter<128, DefaultHasher> {
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter`
     /// with `num_bits` number of bits for tracking item membership.
     ///
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 128 bits.
+    /// The `BloomFilter` built from the returned builder will have a block size of 128 bits.
     ///
-    /// [`BloomFilter<128>`] is faster but less accurate than [`BloomFilter<256>`]
+    /// `BloomFilter<128>` is faster but less accurate than `BloomFilter<256>`
     ///
     /// # Examples
     ///
@@ -159,8 +163,8 @@ impl BloomFilter<128, DefaultHasher> {
         BloomFilter::new_builder::<128>(num_bits)
     }
 
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`] initialized with bit vector `bit_vec`.
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 128 bits.
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+    /// The `BloomFilter` built from the returned builder will have a block size of 128 bits.
     /// To fit a 128 bit block size, `bit_vec` will be padded with `0u64` to have a length multiple of 2.
     ///
     /// # Examples
@@ -176,12 +180,12 @@ impl BloomFilter<128, DefaultHasher> {
 }
 
 impl BloomFilter<256, DefaultHasher> {
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter`
     /// with `num_bits` number of bits for tracking item membership.
     ///
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 256 bits.
+    /// The `BloomFilter` built from the returned builder will have a block size of 256 bits.
     ///
-    /// [`BloomFilter<256>`] is faster but less accurate than [`BloomFilter<512>`]
+    /// `BloomFilter<256>` is faster but less accurate than `BloomFilter<512>`
     ///
     /// # Examples
     ///
@@ -194,8 +198,8 @@ impl BloomFilter<256, DefaultHasher> {
         BloomFilter::new_builder::<256>(num_bits)
     }
 
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`] initialized with bit vector `bit_vec`.
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 256 bits.
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+    /// The `BloomFilter` built from the returned builder will have a block size of 256 bits.
     /// To fit a 256 bit block size, `bit_vec` will be padded with `0u64` to have a length multiple of 4.
     ///
     /// # Examples
@@ -211,13 +215,17 @@ impl BloomFilter<256, DefaultHasher> {
 }
 
 impl BloomFilter<512, DefaultHasher> {
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`]
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter`
     /// with `num_bits` number of bits for tracking item membership.
     ///
-    /// The returned [`BloomFilter`] has a block size of 512 bits.
+    /// The returned `BloomFilter` has a block size of 512 bits.
     ///
-    /// Use [`BloomFilter::<256>::builder_from_bits`], [`BloomFilter::<128>::builder_from_bits`], or [`BloomFilter::<64>::builder_from_bits`] for more speed
-    /// but slightly higher false positive rates.
+    /// Use either
+    /// - [`BloomFilter::<256>::builder_from_bits`]
+    /// - [`BloomFilter::<128>::builder_from_bits`]
+    /// - [`BloomFilter::<64>::builder_from_bits`]
+    ///
+    /// for more speed but slightly higher false positive rates.
     ///
     /// # Examples
     ///
@@ -230,8 +238,8 @@ impl BloomFilter<512, DefaultHasher> {
         BloomFilter::new_builder::<512>(num_bits)
     }
 
-    /// Creates a new instance of [`Builder`] to construct a [`BloomFilter`] initialized with bit vector `bit_vec`.
-    /// The [`BloomFilter`] built from the returned builder will have a block size of 512 bits.
+    /// Creates a new instance of [`Builder`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+    /// The `BloomFilter` built from the returned builder will have a block size of 512 bits.
     /// To fit a 512 bit block size, `bit_vec` will be padded with `0u64` to have a length multiple of 8.
     ///
     /// # Examples
@@ -255,9 +263,16 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     #[inline]
     fn optimal_hashes_f(items_per_block: f64) -> f64 {
         let block_size = BLOCK_SIZE_BITS as f64;
-        let max_hashes = block_size / 64.0f64
-            * signature::hashes_for_bits(32)
-            * ((BLOCK_SIZE_BITS as f64) / (512f64));
+
+        // `items_per_block` is an average. When block sizes decrease
+        // the variance in the actual item per block decrease,
+        // meaning we are more likely to have a "crowded" block, with
+        // way too many bits set. So we decrease the max hashes
+        // to decrease this "crowding" effect.
+        // TODO: a more precise formula for this
+        let min_hashes_mult = (BLOCK_SIZE_BITS as f64) / (512f64);
+
+        let max_hashes = block_size / 64.0f64 * signature::hashes_for_bits(32) * min_hashes_mult;
         let hashes_per_block = block_size / items_per_block * f64::ln(2.0f64);
         if hashes_per_block > max_hashes {
             max_hashes
@@ -343,10 +358,20 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         self.bits.num_blocks()
     }
 
-    /// Returns a u64 slice of this `BloomFilter`’s contents.
+    /// Returns a `u64` slice of this `BloomFilter`’s contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let data = vec![0x517cc1b727220a95; 8];
+    /// let bloom = BloomFilter::<512>::builder_from_vec(data.clone()).hashes(4);
+    /// assert_eq!(bloom.as_slice().to_vec(), data);
+    /// ```
     #[inline]
     pub fn as_slice(&self) -> &[u64] {
-        self.bits.as_raw()
+        self.bits.as_slice()
     }
 }
 
@@ -489,20 +514,25 @@ mod tests {
 
     #[test]
     fn test_to_from_vec() {
-        fn to_from_<const N: usize>() {
-            let vals = random_numbers(100, 42);
-            let mut b = BloomFilter::new_builder::<N>(10090).seed(&1).hashes(3);
+        fn to_from_<const N: usize>(size: usize) {
+            let vals = random_numbers(100, size as u64);
+            let mut b = BloomFilter::new_builder::<N>(size).seed(&1).hashes(3);
             b.extend(vals.clone());
             let x = b.as_slice();
             let b2 = BloomFilter::new_builder_from_vec::<N>(x.to_vec())
                 .seed(&1)
                 .hashes(3);
             assert_eq!(b, b2);
+            assert_eq!(b.num_blocks() * N, b.as_slice().len() * 64);
+            assert!(size <= b.as_slice().len() * 64);
+            assert!((size + N) > b.as_slice().len() * 64);
         }
-        to_from_::<64>();
-        to_from_::<128>();
-        to_from_::<256>();
-        to_from_::<512>();
+        for size in 1..=10009 {
+            to_from_::<64>(size);
+            to_from_::<128>(size);
+            to_from_::<256>(size);
+            to_from_::<512>(size);
+        }
     }
 
     #[test]
@@ -523,10 +553,6 @@ mod tests {
         random_inserts_always_contained_::<BloomFilter<256>>();
         random_inserts_always_contained_::<BloomFilter<128>>();
         random_inserts_always_contained_::<BloomFilter<64>>();
-        // random_inserts_always_contained_::<BloomFilter<512, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<256, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<128, ahash::RandomState>>();
-        // random_inserts_always_contained_::<BloomFilter<64, ahash::RandomState>>();
     }
 
     #[test]
@@ -560,10 +586,6 @@ mod tests {
         test_optimal_hashes_is_optimal_::<256, DefaultHasher>();
         test_optimal_hashes_is_optimal_::<128, DefaultHasher>();
         test_optimal_hashes_is_optimal_::<64, DefaultHasher>();
-        // test_optimal_hashes_is_optimal_::<512, ahash::RandomState>();
-        // test_optimal_hashes_is_optimal_::<256, ahash::RandomState>();
-        // test_optimal_hashes_is_optimal_::<128, ahash::RandomState>();
-        // test_optimal_hashes_is_optimal_::<64, ahash::RandomState>();
     }
 
     #[test]
@@ -641,10 +663,6 @@ mod tests {
         false_pos_decrease_with_size_::<BloomFilter<256>>();
         false_pos_decrease_with_size_::<BloomFilter<128>>();
         false_pos_decrease_with_size_::<BloomFilter<64>>();
-        // false_pos_decrease_with_size_::<BloomFilter<512, ahash::RandomState>>();
-        // false_pos_decrease_with_size_::<BloomFilter<256, ahash::RandomState>>();
-        // false_pos_decrease_with_size_::<BloomFilter<128, ahash::RandomState>>();
-        // false_pos_decrease_with_size_::<BloomFilter<64, ahash::RandomState>>();
     }
 
     fn assert_even_distribution(distr: &[u64], err: f64) {
@@ -667,10 +685,6 @@ mod tests {
         block_distribution_::<BloomFilter<256>>();
         block_distribution_::<BloomFilter<128>>();
         block_distribution_::<BloomFilter<64>>();
-        // block_distribution_::<BloomFilter<512, ahash::RandomState>>();
-        // block_distribution_::<BloomFilter<256, ahash::RandomState>>();
-        // block_distribution_::<BloomFilter<128, ahash::RandomState>>();
-        // block_distribution_::<BloomFilter<64, ahash::RandomState>>();
     }
     #[test]
     fn block_hash_distribution() {
@@ -779,10 +793,6 @@ mod tests {
         test_hash_integration_::<256, DefaultHasher>(pct);
         test_hash_integration_::<128, DefaultHasher>(pct);
         test_hash_integration_::<64, DefaultHasher>(pct);
-        // test_hash_integration_::<512, ahash::RandomState>(pct);
-        // test_hash_integration_::<256, ahash::RandomState>(pct);
-        // test_hash_integration_::<128, ahash::RandomState>(pct);
-        // test_hash_integration_::<64, ahash::RandomState>(pct);
     }
 
     #[test]
