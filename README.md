@@ -93,7 +93,7 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 
 
-### False Positive Performance
+## False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
 
