@@ -10,7 +10,7 @@
 The fastest bloom filter in Rust. No accuracy compromises. Compatible with any hasher.
 
 
-### Usage
+## Usage
 
 ```toml
 # Cargo.toml
@@ -49,7 +49,7 @@ let filter = BloomFilter::builder(num_bits)
     .items(["42", "🦀"]);
 ```
 
-### Background
+## Background
 Bloom filters are space efficient approximate membership set data structures. False positives from a membership check are possible, but false negatives are not. [See more.](https://en.wikipedia.org/wiki/Bloom_filter)
 
 Blocked bloom filters are supported by an underlying bit vector, chunked into 512, 256, 128, or 64 bit "blocks", to track item membership. To insert, a number of bits are set at positions based on the item's hash in one of the underlying bit vector's blocks. To check membership, a number of bits are checked at positions based on the item's hash in one of the underlying bit vector's blocks. 
@@ -66,13 +66,13 @@ hash(4) ──────┬─────┬───────────
 Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change.
 
 
-### Implementation
+## Implementation
 
 `fastbloom` is **several times faster** than existing bloom filters and scales very well with the number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one real hash per item**, and leverages other research findings on bloom filters.
 
 `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher.
 
-### Runtime Performance
+## Runtime Performance
 
 #### SipHash
 Runtime comparison to other bloom filter crates (all using SipHash).
@@ -96,9 +96,9 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 > The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers that do NOT exist in the control hash set but do report as existing in the bloom filter.
 
-### Comparing Block Sizes: 64, 128, 256, and 512 Bits
+## Comparing Block Sizes
 
-`fastbloom` offers 4 different block sizes. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
+`fastbloom` offers 4 different block sizes: 64, 128, 256, and 512 bits. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
 
 #### Runtime Performance
 Times are for 1000 random strings. The bloom filters used ahash.
@@ -110,7 +110,7 @@ Times are for 1000 random strings. The bloom filters used ahash.
 #### Accuracy
 ![fastbloom-block-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/c8e88ddb-3617-4d85-8f76-b606b4e98e13)
 
-### How it Works
+## How it Works
 
 `fastbloom` attributes its performance to two insights:
 1. Only one real hash per item is needed, subsequent hashes can be cheaply derived from the real hash
