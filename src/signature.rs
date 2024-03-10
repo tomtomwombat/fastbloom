@@ -332,4 +332,13 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_work_for_unknown_bits() {
+        for i in 33..=1000 {
+            for j in 1..=32 {
+                assert!(work(j) < work(i));
+            }
+        }
+    }
 }
