@@ -135,6 +135,22 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
+    fn test_to_from_vec() {
+        fn to_from_<const N: usize>(size: usize) {
+            let b: BlockedBitVec<N> = vec![0u64; size].into();
+            assert_eq!(b.num_blocks() * N, b.as_slice().len() * 64);
+            assert!(size <= b.as_slice().len());
+            assert!((size + N) > b.as_slice().len());
+        }
+        for size in 1..=10009 {
+            to_from_::<64>(size);
+            to_from_::<128>(size);
+            to_from_::<256>(size);
+            to_from_::<512>(size);
+        }
+    }
+
+    #[test]
     fn test_build() {
         assert_eq!(BlockedBitVec::<1>::new(10), Err(BlockSizeError::TooSmall));
         assert_eq!(BlockedBitVec::<63>::new(10), Err(BlockSizeError::TooSmall));
