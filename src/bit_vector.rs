@@ -191,4 +191,12 @@ mod tests {
             assert!(BlockedBitVec::<64>::check_for_block(block_mut, bit_index));
         }
     }
+
+    #[test]
+    fn test_display_block_size_error() {
+        let x = BlockSizeError::NonPowerOfTwo;
+        let y = BlockSizeError::TooSmall;
+        assert_eq!(format!("{}", x), format!("{:?}", x),);
+        assert_eq!(format!("{}", y), format!("{:?}", y),);
+    }
 }
