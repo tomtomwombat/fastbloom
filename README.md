@@ -3,6 +3,7 @@
 [![docs.rs](https://docs.rs/bloomfilter/badge.svg)](https://docs.rs/fastbloom)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-MIT)
 [![License: APACHE](https://img.shields.io/badge/License-Apache-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-Apache)
+![Downloads](https://img.shields.io/crates/d/fastbloom)
 <a href="https://codecov.io/gh/tomtomwombat/fastbloom">
     <img src="https://codecov.io/gh/tomtomwombat/fastbloom/branch/main/graph/badge.svg">
 </a>
@@ -79,12 +80,14 @@ Runtime comparison to other bloom filter crates (all using SipHash).
 Note:
 - The number hashes for all bloom filters is derived to optimize accuracy, meaning fewer items in the bloom filters result in more hashes per item and generally slower performance.
 - As number of items (input) increases, the accuracy of the bloom filter decreases. 1000 random strings were used to test membership.
+
 ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
 ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
 
 
 #### Any Hash Goes
 The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use a similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
+
 ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/9bf303fd-897d-412b-9f42-c57e6460ead0)
 ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/060e739b-7fb2-4c18-8086-7034f6fb92c0)
 
@@ -93,6 +96,7 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 ### False Positive Performance
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other bloom filter crates:
+
 ![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
 > The bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers that do NOT exist in the control hash set but do report as existing in the bloom filter.
 
