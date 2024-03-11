@@ -277,7 +277,11 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         if hashes_per_block > max_hashes {
             max_hashes
         } else {
-            hashes_per_block
+            if hashes_per_block < 1.0 {
+                1.0
+            } else {
+                hashes_per_block
+            }
         }
     }
 
@@ -286,7 +290,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         (h & Self::BIT_INDEX_MASK) as usize
     }
 
-    /// Adds a value to the bloom filter.
+    /// Adds a value to the bloom filter. Returns true if the item may have already been a member.
     ///
     /// # Examples
     /// ```
@@ -297,20 +301,26 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// assert!(bloom.contains(&2));
     /// ```
     #[inline]
-    pub fn insert(&mut self, val: &(impl Hash + ?Sized)) {
+    pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
         let block_index = block_index(self.num_blocks(), h1);
         let block = &mut self.bits.get_block_mut(block_index);
+        let mut previously_contained = true;
         for _ in 0..self.num_hashes {
-            BlockedBitVec::<BLOCK_SIZE_BITS>::set_for_block(block, Self::bit_index(&mut h1, h2));
+            previously_contained &= BlockedBitVec::<BLOCK_SIZE_BITS>::set_for_block(
+                block,
+                Self::bit_index(&mut h1, h2),
+            );
         }
         if let Some(num_rounds) = self.num_rounds {
             for i in 0..self.bits.get_block(block_index).len() {
                 let data = signature::signature(&mut h1, h2, num_rounds);
                 let block = &mut self.bits.get_block_mut(block_index);
+                previously_contained &= (block[i] & data) == data;
                 block[i] |= data;
             }
         }
+        previously_contained
     }
 
     /// Returns `false` if the bloom filter definitely does not contain a value.
@@ -372,6 +382,12 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     #[inline]
     pub fn as_slice(&self) -> &[u64] {
         self.bits.as_slice()
+    }
+
+    /// Clear all of the bits in the bloom filter, removing all items.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.bits.clear();
     }
 }
 
@@ -536,23 +552,55 @@ mod tests {
     }
 
     #[test]
-    fn random_inserts_always_contained() {
-        fn random_inserts_always_contained_<T: Container>() {
+    fn first_insert_false() {
+        let mut filter = BloomFilter::builder(1202).expected_items(4);
+        assert!(!filter.insert(&5));
+    }
+
+    #[test]
+    fn nothing_after_clear() {
+        fn nothing_after_clear_<const N: usize>() {
             for mag in 1..6 {
                 let size = 10usize.pow(mag);
                 for bloom_size_mag in 6..10 {
                     let num_blocks_bytes = 1 << bloom_size_mag;
                     let sample_vals = random_numbers(size, 42);
                     let num_bits = num_blocks_bytes * 8;
-                    let filter: T = Container::new(num_bits, sample_vals.iter());
-                    assert!(sample_vals.into_iter().all(|x| filter.check(x)));
+                    let mut filter = BloomFilter::new_builder::<N>(num_bits)
+                        .seed(&7)
+                        .items(sample_vals.iter());
+                    filter.clear();
+                    assert!(sample_vals.iter().all(|x| !filter.contains(x)));
+                    assert_eq!(filter.block_counts().iter().sum::<u64>(), 0);
                 }
             }
         }
-        random_inserts_always_contained_::<BloomFilter<512>>();
-        random_inserts_always_contained_::<BloomFilter<256>>();
-        random_inserts_always_contained_::<BloomFilter<128>>();
-        random_inserts_always_contained_::<BloomFilter<64>>();
+        nothing_after_clear_::<512>();
+        nothing_after_clear_::<256>();
+        nothing_after_clear_::<128>();
+        nothing_after_clear_::<64>();
+    }
+
+    #[test]
+    fn random_inserts_always_contained() {
+        fn random_inserts_always_contained_<const N: usize>() {
+            for mag in 1..6 {
+                let size = 10usize.pow(mag);
+                for bloom_size_mag in 6..10 {
+                    let num_blocks_bytes = 1 << bloom_size_mag;
+                    let sample_vals = random_numbers(size, 42);
+                    let num_bits = num_blocks_bytes * 8;
+                    let mut filter =
+                        BloomFilter::new_builder::<N>(num_bits).items(sample_vals.iter());
+                    assert!(sample_vals.iter().all(|x| filter.contains(x)));
+                    assert!(sample_vals.iter().all(|x| filter.insert(x)));
+                }
+            }
+        }
+        random_inserts_always_contained_::<512>();
+        random_inserts_always_contained_::<256>();
+        random_inserts_always_contained_::<128>();
+        random_inserts_always_contained_::<64>();
     }
 
     #[test]

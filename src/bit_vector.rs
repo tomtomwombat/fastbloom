@@ -98,9 +98,11 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
 
     /// Sets the `bit_index`th bit in the block to 1.
     #[inline]
-    pub fn set_for_block(block: &mut [u64], bit_index: usize) {
+    pub fn set_for_block(block: &mut [u64], bit_index: usize) -> bool {
         let (index, bit) = Self::coordinate(bit_index);
+        let previously_contained = block[index] & bit > 0;
         block[index] |= bit;
+        previously_contained
     }
 
     /// Returns true if the `bit_index`th in the block is 1.
@@ -113,6 +115,13 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     #[inline]
     pub fn as_slice(&self) -> &[u64] {
         &self.bits
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        for i in 0..self.bits.len() {
+            self.bits[i] = 0;
+        }
     }
 }
 
