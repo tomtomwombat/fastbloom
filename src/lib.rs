@@ -569,6 +569,7 @@ mod tests {
                     let mut filter = BloomFilter::new_builder::<N>(num_bits)
                         .seed(&7)
                         .items(sample_vals.iter());
+                    assert!(filter.num_hashes() > 0);
                     filter.clear();
                     assert!(sample_vals.iter().all(|x| !filter.contains(x)));
                     assert_eq!(filter.block_counts().iter().sum::<u64>(), 0);
