@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/fastbloom.svg)](https://crates.io/crates/fastbloom)
 [![docs.rs](https://docs.rs/bloomfilter/badge.svg)](https://docs.rs/fastbloom)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-MIT)
-[![License: APACHE](https://img.shields.io/badge/License-Apache-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-Apache)
+[![License: APACHE](https://img.shields.io/badge/License-Apache-blue.svg)](https://github.com/tomtomwombat/fastbloom/blob/main/LICENSE-APACHE)
 ![Downloads](https://img.shields.io/crates/d/fastbloom)
 <a href="https://codecov.io/gh/tomtomwombat/fastbloom">
     <img src="https://codecov.io/gh/tomtomwombat/fastbloom/branch/main/graph/badge.svg">
