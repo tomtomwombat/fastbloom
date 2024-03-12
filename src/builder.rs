@@ -3,29 +3,16 @@ use std::hash::Hash;
 
 use crate::signature;
 
-/// A bloom filter builder.
+/// A bloom filter builder with an immutable number of bits.
 ///
-/// This type can be used to construct an instance of [`BloomFilter`]
-/// via the builder pattern.
-///
-/// 1. First, the `Builder` is initialized from some specification of underlying memory, either number of bits or raw vec data:
-/// - [`BloomFilter::builder`]
-/// - [`BloomFilter::<512>::builder_from_bits`]
-/// - [`BloomFilter::<512>::builder_from_vec`]
-/// 2. Some optional modifications can be made, such as setting the seed (only for [`DefaultHasher`]) or setting the hasher:
-/// - [`Builder::seed`]
-/// - [`Builder::hashes`]
-/// 3. Lastly, the builder is "consumed" and a [`BloomFilter`] is built from a direct or indirect specification for number of hashes:
-/// - [`Builder::hashes`]
-/// - [`Builder::expected_items`]
-/// - [`Builder::items`]
+/// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
 #[derive(Debug, Clone)]
-pub struct Builder<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
+pub struct BuilderWithBits<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
     pub(crate) data: BlockedBitVec<BLOCK_SIZE_BITS>,
     pub(crate) hasher: S,
 }
 
-impl<const BLOCK_SIZE_BITS: usize> Builder<BLOCK_SIZE_BITS> {
+impl<const BLOCK_SIZE_BITS: usize> BuilderWithBits<BLOCK_SIZE_BITS> {
     /// Sets the seed for this builder. The later constructed [`BloomFilter`]
     /// will use this seed when hashing items.
     ///
@@ -42,7 +29,7 @@ impl<const BLOCK_SIZE_BITS: usize> Builder<BLOCK_SIZE_BITS> {
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BITS, S> {
     /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
     /// this hasher when inserting and checking items.
     ///
@@ -54,8 +41,8 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     ///
     /// let bloom = BloomFilter::builder(1024).hasher(RandomState::default()).hashes(4);
     /// ```
-    pub fn hasher<H: BuildHasher>(self, hasher: H) -> Builder<BLOCK_SIZE_BITS, H> {
-        Builder::<BLOCK_SIZE_BITS, H> {
+    pub fn hasher<H: BuildHasher>(self, hasher: H) -> BuilderWithBits<BLOCK_SIZE_BITS, H> {
+        BuilderWithBits::<BLOCK_SIZE_BITS, H> {
             data: self.data,
             hasher,
         }
@@ -121,7 +108,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     }
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
-    /// all values in `items`. Like [`Builder::expected_items`], the number of hashes per item
+    /// all values in `items`. Like [`BuilderWithBits::expected_items`], the number of hashes per item
     /// is optimized based on `items.len()` to maximize bloom filter accuracy
     /// (minimize false positives chance on [`BloomFilter::contains`]).
     ///
@@ -143,8 +130,112 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Builder<BLOCK_SIZE_BITS, S> {
     }
 }
 
+fn optimal_size(items_count: f64, fp_p: f64) -> usize {
+    let log2 = f64::ln(2.0f64);
+    let log2_2 = log2 * log2;
+    let result = 8 * ((items_count) * f64::ln(fp_p) / (-8.0 * log2_2)).ceil() as usize;
+    std::cmp::max(result, 512)
+}
+
+/// A bloom filter builder with an immutable false positive rate.
+///
+/// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
+#[derive(Debug, Clone)]
+pub struct BuilderWithFalsePositiveRate<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
+    pub(crate) desired_fp_rate: f64,
+    pub(crate) hasher: S,
+}
+
+impl<const BLOCK_SIZE_BITS: usize> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS> {
+    /// Sets the seed for this builder. The later constructed [`BloomFilter`]
+    /// will use this seed when hashing items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let bloom = BloomFilter::<512>::builder_from_fp(0.001).seed(&1).expected_items(100);
+    /// ```
+    pub fn seed(mut self, seed: &u128) -> Self {
+        self.hasher = DefaultHasher::seeded(&seed.to_be_bytes());
+        self
+    }
+}
+
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
+    BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S>
+{
+    /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
+    /// this hasher when inserting and checking items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    /// use ahash::RandomState;
+    ///
+    /// let bloom = BloomFilter::<512>::builder_from_fp(0.001).hasher(RandomState::default()).expected_items(100);
+    /// ```
+    pub fn hasher<H: BuildHasher>(
+        self,
+        hasher: H,
+    ) -> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, H> {
+        BuilderWithFalsePositiveRate::<BLOCK_SIZE_BITS, H> {
+            desired_fp_rate: self.desired_fp_rate,
+            hasher,
+        }
+    }
+
+    /// "Consumes" this builder, using the provided `expected_num_items` to return an
+    /// empty [`BloomFilter`]. The number of hashes is optimized based on `expected_num_items`
+    /// to maximize bloom filter accuracy (minimize false positives chance on [`BloomFilter::contains`]).
+    /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let bloom = BloomFilter::<512>::builder_from_fp(0.001).expected_items(500);
+    /// ```
+    pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+        let num_bits = optimal_size(expected_num_items as f64, self.desired_fp_rate)
+            * match BLOCK_SIZE_BITS {
+                64 => 3,
+                128 => 2,
+                _ => 1,
+            };
+        BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+            .hasher(self.hasher)
+            .expected_items(expected_num_items)
+    }
+
+    /// "Consumes" this builder and constructs a [`BloomFilter`] containing
+    /// all values in `items`. Like [`BuilderWithFalsePositiveRate::expected_items`], the number of hashes per item
+    /// is optimized based on `items.len()` to maximize bloom filter accuracy
+    /// (minimize false positives chance on [`BloomFilter::contains`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let bloom = BloomFilter::<512>::builder_from_fp(0.001).items([1, 2, 3]);
+    /// ```
+    pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
+        self,
+        items: I,
+    ) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+        let into_iter = items.into_iter();
+        let mut filter = self.expected_items(into_iter.len());
+        filter.extend(into_iter);
+        filter
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod for_accuracy_tests {
     use crate::BloomFilter;
     use ahash::RandomState;
 
@@ -174,5 +265,15 @@ mod tests {
             let b = BloomFilter::<128>::builder_from_bits(1).hashes(num_hashes);
             assert_eq!(num_hashes, b.num_hashes());
         }
+    }
+}
+
+#[cfg(test)]
+mod for_size_tests {
+    use crate::BloomFilter;
+
+    #[test]
+    fn test_size() {
+        let _: BloomFilter<512> = BloomFilter::new_builder_from_fp(0.0001).expected_items(10000);
     }
 }
