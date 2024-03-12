@@ -16,7 +16,7 @@ The fastest bloom filter in Rust. No accuracy compromises. Compatible with any h
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.4.0"
+fastbloom = "0.5.0"
 ```
 Basic usage:
 ```rust
