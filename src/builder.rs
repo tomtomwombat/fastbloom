@@ -272,14 +272,14 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
 macro_rules! impl_builder_block_size {
     ($($size:literal = $fn_name:ident),* $(,)*) => (
         $(
-            #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
-            #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
-            #[doc = "# Example"]
-            #[doc = "```"]
-            #[doc = "use fastbloom::BloomFilter;"]
-            #[doc = concat!("let builder = BloomFilter::with_false_pos(0.01).block_size_", stringify!($size), "();")]
-            #[doc = "```"]
             impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S> {
+                #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
+                #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
+                #[doc = "# Example"]
+                #[doc = "```"]
+                #[doc = "use fastbloom::BloomFilter;"]
+                #[doc = concat!("let builder = BloomFilter::with_false_pos(0.01).block_size_", stringify!($size), "();")]
+                #[doc = "```"]
                 pub fn $fn_name(self) -> BuilderWithFalsePositiveRate<$size, S> {
                     BuilderWithFalsePositiveRate::<$size, S> {
                         desired_fp_rate: self.desired_fp_rate,
@@ -288,14 +288,14 @@ macro_rules! impl_builder_block_size {
                 }
             }
 
-            #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
-            #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
-            #[doc = "# Example"]
-            #[doc = "```"]
-            #[doc = "use fastbloom::BloomFilter;"]
-            #[doc = concat!("let builder = BloomFilter::with_num_bits(1000).block_size_", stringify!($size), "();")]
-            #[doc = "```"]
             impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BITS, S> {
+                #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
+                #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
+                #[doc = "# Example"]
+                #[doc = "```"]
+                #[doc = "use fastbloom::BloomFilter;"]
+                #[doc = concat!("let builder = BloomFilter::with_num_bits(1000).block_size_", stringify!($size), "();")]
+                #[doc = "```"]
                 pub fn $fn_name(self) -> BuilderWithBits<$size, S> {
                     BuilderWithBits::<$size, S> {
                         data: self.data,
