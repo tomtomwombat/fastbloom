@@ -22,19 +22,15 @@ Basic usage:
 ```rust
 use fastbloom::BloomFilter;
 
-let num_bits = 1024;
-
-let mut filter = BloomFilter::builder(num_bits).expected_items(2);
+let mut filter = BloomFilter::with_num_bits(1024).expected_items(2);
 filter.insert("42");
 filter.insert("🦀");
 ```
-Instantiate from a collection of items:
+Instantiate with a target false positive rate:
 ```rust
 use fastbloom::BloomFilter;
 
-let num_bits = 1024;
-
-let filter = BloomFilter::builder(num_bits).items(["42", "🦀"]);
+let filter = BloomFilter::with_false_pos(0.001).items(["42", "🦀"]);
 assert!(filter.contains("42"));
 assert!(filter.contains("🦀"));
 ```
@@ -43,9 +39,7 @@ Use any hasher:
 use fastbloom::BloomFilter;
 use ahash::RandomState;
 
-let num_bits = 1024;
-
-let filter = BloomFilter::builder(num_bits)
+let filter = BloomFilter::with_num_bits(1024)
     .hasher(RandomState::default())
     .items(["42", "🦀"]);
 ```

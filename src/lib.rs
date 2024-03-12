@@ -26,19 +26,15 @@ mod signature;
 /// ```rust
 /// use fastbloom::BloomFilter;
 ///
-/// let num_bits = 1024;
-///
-/// let mut filter = BloomFilter::builder(num_bits).expected_items(2);
+/// let mut filter = BloomFilter::with_num_bits(1024).expected_items(2);
 /// filter.insert("42");
 /// filter.insert("🦀");
 /// ```
-/// Instantiate from a collection of items:
+/// Instantiate with a target false positive rate:
 /// ```rust
 /// use fastbloom::BloomFilter;
 ///
-/// let num_bits = 1024;
-///
-/// let filter = BloomFilter::builder(num_bits).items(["42", "🦀"]);
+/// let filter = BloomFilter::with_false_pos(0.001).items(["42", "🦀"]);
 /// assert!(filter.contains("42"));
 /// assert!(filter.contains("🦀"));
 /// ```
@@ -47,9 +43,7 @@ mod signature;
 /// use fastbloom::BloomFilter;
 /// use ahash::RandomState;
 ///
-/// let num_bits = 1024;
-///
-/// let filter = BloomFilter::builder(num_bits)
+/// let filter = BloomFilter::with_num_bits(1024)
 ///     .hasher(RandomState::default())
 ///     .items(["42", "🦀"]);
 /// ```
@@ -71,24 +65,24 @@ impl BloomFilter {
         num_bits: usize,
     ) -> BuilderWithBits<BLOCK_SIZE_BITS> {
         assert!(num_bits > 0);
-        let num_blocks = num_bits.div_ceil(BLOCK_SIZE_BITS);
+        let num_u64s = num_bits.div_ceil(64);
         BuilderWithBits::<BLOCK_SIZE_BITS> {
-            data: BlockedBitVec::<BLOCK_SIZE_BITS>::new(num_blocks).unwrap(),
+            data: vec![0; num_u64s],
             hasher: Default::default(),
         }
     }
 
-    fn new_builder_from_vec<const BLOCK_SIZE_BITS: usize>(
+    fn new_from_vec<const BLOCK_SIZE_BITS: usize>(
         vec: Vec<u64>,
     ) -> BuilderWithBits<BLOCK_SIZE_BITS> {
         assert!(!vec.is_empty());
         BuilderWithBits::<BLOCK_SIZE_BITS> {
-            data: vec.into(),
+            data: vec,
             hasher: Default::default(),
         }
     }
 
-    fn new_builder_from_fp<const BLOCK_SIZE_BITS: usize>(
+    fn new_with_false_pos<const BLOCK_SIZE_BITS: usize>(
         fp: f64,
     ) -> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS> {
         assert!(fp > 0.0);
@@ -98,74 +92,48 @@ impl BloomFilter {
         }
     }
 
-    /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter`
-    /// with `num_bits` number of bits for tracking item membership.
-    ///
-    /// The `BloomFilter` built from the returned builder will have a block size of 512 bits.
-    ///
-    /// Use either
-    /// - [`BloomFilter::<256>::builder_from_bits`]
-    /// - [`BloomFilter::<128>::builder_from_bits`]
-    /// - [`BloomFilter::<64>::builder_from_bits`]
-    ///
-    /// for more speed but slightly higher false positive rates.
+    /// Creates a new instance of [`BuilderWithFalsePositiveRate`] to construct a `BloomFilter` with a target false positive rate of `fp`.
+    /// The memory size of the underlying bit vector is dependent on the false positive rate and the expected number of items.
+    /// # Panics
+    /// Panics if the false positive rate, `fp`, is 0.
     ///
     /// # Examples
-    ///
     /// ```
     /// use fastbloom::BloomFilter;
-    ///
-    /// let bloom = BloomFilter::builder(1024).hashes(4);
+    /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(1000);
     /// ```
-    pub fn builder(num_bits: usize) -> BuilderWithBits<512> {
-        BloomFilter::<512>::builder_from_bits(num_bits)
+    pub fn with_false_pos(fp: f64) -> BuilderWithFalsePositiveRate<512> {
+        BloomFilter::new_with_false_pos::<512>(fp)
+    }
+
+    /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` with `num_bits` number of bits for tracking item membership.
+    /// # Panics
+    /// Panics if the number of bits, `num_bits`, is 0.
+    ///
+    /// # Examples
+    /// ```
+    /// use fastbloom::BloomFilter;
+    /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
+    /// ```
+    pub fn with_num_bits(num_bits: usize) -> BuilderWithBits<512> {
+        BloomFilter::new_builder::<512>(num_bits)
+    }
+
+    /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+    ///
+    /// To fit the bit block size, `bit_vec` will be padded with `0u64`.
+    ///
+    /// # Panics
+    /// Panics if the bit vector, `bit_vec`, is empty.
+    /// # Examples
+    /// ```
+    /// use fastbloom::BloomFilter;
+    /// let bloom = BloomFilter::from_vec(vec![0x517cc1b727220a95; 8]).hashes(4);
+    /// ```
+    pub fn from_vec(bit_vec: Vec<u64>) -> BuilderWithBits<512> {
+        BloomFilter::new_from_vec::<512>(bit_vec)
     }
 }
-
-macro_rules! impl_bloom_filter_constructor {
-    ($($size:literal),* $(,)*) => (
-        $(
-            impl BloomFilter<$size, DefaultHasher> {
-                #[doc = "Creates a new instance of [`BuilderWithFalsePositiveRate`] to construct a `BloomFilter` with a target false positive rate of `fp`."]
-                #[doc = "The memory size of the underlying bit vector is dependent on the false positive rate and the expected number of items."]
-                #[doc = concat!("The `BloomFilter` built from the returned builder will have a block size of", stringify!($size), " bits.")]
-                #[doc = "# Examples\n"]
-                #[doc = "```"]
-                #[doc = "use fastbloom::BloomFilter;\n"]
-                #[doc = concat!("let bloom = BloomFilter::<", stringify!($size),">::builder_from_fp(0.001).expected_items(1000);")]
-                #[doc = "```"]
-                pub fn builder_from_fp(fp: f64) -> BuilderWithFalsePositiveRate<$size> {
-                    BloomFilter::new_builder_from_fp::<$size>(fp)
-                }
-
-                #[doc = "Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` with `num_bits` number of bits for tracking item membership."]
-                #[doc = concat!("The `BloomFilter` built from the returned builder will have a block size of ", stringify!($size), " bits.")]
-                #[doc = "# Examples\n"]
-                #[doc = "```"]
-                #[doc = "use fastbloom::BloomFilter;\n"]
-                #[doc = concat!("let bloom = BloomFilter::<", stringify!($size),">::builder_from_bits(1024).hashes(4);")]
-                #[doc = "```"]
-                pub fn builder_from_bits(num_bits: usize) -> BuilderWithBits<$size> {
-                    BloomFilter::new_builder::<$size>(num_bits)
-                }
-
-                #[doc = "Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` initialized with bit vector `bit_vec`."]
-                #[doc = concat!("The `BloomFilter` built from the returned builder will have a block size of ", stringify!($size), " bits.")]
-                #[doc = concat!("To fit the ", stringify!($size), " bit block size, `bit_vec` will be padded with `0u64` to have a length multiple of", stringify!($size / 64), ".")]
-                #[doc = "# Examples\n"]
-                #[doc = "```"]
-                #[doc = "use fastbloom::BloomFilter;\n"]
-                #[doc = concat!("let bloom = BloomFilter::<", stringify!($size),">::builder_from_vec(vec![0x517cc1b727220a95; 8]).hashes(4);")]
-                #[doc = "```"]
-                pub fn builder_from_vec(bit_vec: Vec<u64>) -> BuilderWithBits<$size> {
-                    BloomFilter::new_builder_from_vec::<$size>(bit_vec)
-                }
-            }
-        )*
-    )
-}
-
-impl_bloom_filter_constructor!(64, 128, 256, 512);
 
 impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, S> {
     /// Used to grab the last N bits from a hash.
@@ -209,7 +177,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// ```
     /// use fastbloom::BloomFilter;
     ///
-    /// let mut bloom = BloomFilter::builder(1024).hashes(4);
+    /// let mut bloom = BloomFilter::with_num_bits(1024).hashes(4);
     /// bloom.insert(&2);
     /// assert!(bloom.contains(&2));
     /// ```
@@ -244,7 +212,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// ```
     /// use fastbloom::BloomFilter;
     ///
-    /// let bloom = BloomFilter::builder(1024).items([1, 2, 3]);
+    /// let bloom = BloomFilter::with_num_bits(1024).items([1, 2, 3]);
     /// assert!(bloom.contains(&1));
     /// ```
     #[inline]
@@ -289,7 +257,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// use fastbloom::BloomFilter;
     ///
     /// let data = vec![0x517cc1b727220a95; 8];
-    /// let bloom = BloomFilter::<512>::builder_from_vec(data.clone()).hashes(4);
+    /// let bloom = BloomFilter::<512>::from_vec(data.clone()).hashes(4);
     /// assert_eq!(bloom.as_slice().to_vec(), data);
     /// ```
     #[inline]
@@ -318,7 +286,9 @@ where
 
 impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq for BloomFilter<BLOCK_SIZE_BITS, S> {
     fn eq(&self, other: &Self) -> bool {
-        self.bits == other.bits && self.num_hashes == other.num_hashes
+        self.bits == other.bits
+            && self.num_hashes == other.num_hashes
+            && self.num_rounds == other.num_rounds
     }
 }
 impl Eq for BloomFilter {}
@@ -448,7 +418,7 @@ mod tests {
             let mut b = BloomFilter::new_builder::<N>(size).seed(&1).hashes(3);
             b.extend(vals.clone());
             let x = b.as_slice();
-            let b2 = BloomFilter::new_builder_from_vec::<N>(x.to_vec())
+            let b2 = BloomFilter::new_from_vec::<N>(x.to_vec())
                 .seed(&1)
                 .hashes(3);
             assert_eq!(b, b2);
@@ -466,7 +436,7 @@ mod tests {
 
     #[test]
     fn first_insert_false() {
-        let mut filter = BloomFilter::builder(1202).expected_items(4);
+        let mut filter = BloomFilter::with_num_bits(1202).expected_items(4);
         assert!(!filter.insert(&5));
     }
 
@@ -479,7 +449,7 @@ mod tests {
                     let num_items = 10usize.pow(num_items_mag);
                     let sample_vals = random_numbers(num_items, 42);
 
-                    let filter = BloomFilter::new_builder_from_fp::<N>(fp)
+                    let filter = BloomFilter::new_with_false_pos::<N>(fp)
                         .seed(&42)
                         .items(sample_vals.iter());
                     let control: HashSet<u64> = sample_vals.clone().into_iter().collect();
@@ -586,18 +556,18 @@ mod tests {
         for x in 0u8..10 {
             let seed = x as u128;
             assert_eq!(
-                BloomFilter::builder(num_bits)
+                BloomFilter::with_num_bits(num_bits)
                     .seed(&seed)
                     .items(sample_vals.iter()),
-                BloomFilter::builder(num_bits)
+                BloomFilter::with_num_bits(num_bits)
                     .seed(&seed)
                     .items(sample_vals.iter())
             );
             assert!(
-                !(BloomFilter::builder(num_bits)
+                !(BloomFilter::with_num_bits(num_bits)
                     .seed(&(seed + 1))
                     .items(sample_vals.iter())
-                    == BloomFilter::builder(num_bits)
+                    == BloomFilter::with_num_bits(num_bits)
                         .seed(&seed)
                         .items(sample_vals.iter()))
             );
@@ -788,13 +758,73 @@ mod tests {
 
     #[test]
     fn test_debug() {
-        let filter = BloomFilter::builder(1).hashes(1);
+        let filter = BloomFilter::with_num_bits(1).hashes(1);
         assert!(!format!("{:?}", filter).is_empty());
     }
 
     #[test]
     fn test_clone() {
-        let filter = BloomFilter::builder(4).hashes(4);
+        let filter = BloomFilter::with_num_bits(4).hashes(4);
         assert_eq!(filter, filter.clone());
+    }
+
+    #[test]
+    fn eq_constructors_num_bits() {
+        assert_eq!(
+            BloomFilter::with_num_bits(4).block_size_512().hashes(4),
+            BloomFilter::new_builder::<512>(4).hashes(4),
+        );
+        assert_eq!(
+            BloomFilter::with_num_bits(4).block_size_256().hashes(4),
+            BloomFilter::new_builder::<256>(4).hashes(4),
+        );
+        assert_eq!(
+            BloomFilter::with_num_bits(4).block_size_128().hashes(4),
+            BloomFilter::new_builder::<128>(4).hashes(4),
+        );
+        assert_eq!(
+            BloomFilter::with_num_bits(4).block_size_64().hashes(4),
+            BloomFilter::new_builder::<64>(4).hashes(4),
+        );
+    }
+
+    #[test]
+    fn eq_constructors_false_pos() {
+        assert_eq!(
+            BloomFilter::with_false_pos(0.4).block_size_512(),
+            BloomFilter::new_with_false_pos::<512>(0.4),
+        );
+        assert_eq!(
+            BloomFilter::with_false_pos(0.4).block_size_256(),
+            BloomFilter::new_with_false_pos::<256>(0.4),
+        );
+        assert_eq!(
+            BloomFilter::with_false_pos(0.4).block_size_128(),
+            BloomFilter::new_with_false_pos::<128>(0.4),
+        );
+        assert_eq!(
+            BloomFilter::with_false_pos(0.4).block_size_64(),
+            BloomFilter::new_with_false_pos::<64>(0.4),
+        );
+    }
+
+    #[test]
+    fn eq_constructors_from_vec() {
+        assert_eq!(
+            BloomFilter::from_vec(vec![42; 42]).block_size_512(),
+            BloomFilter::new_from_vec::<512>(vec![42; 42]),
+        );
+        assert_eq!(
+            BloomFilter::from_vec(vec![42; 42]).block_size_256(),
+            BloomFilter::new_from_vec::<256>(vec![42; 42]),
+        );
+        assert_eq!(
+            BloomFilter::from_vec(vec![42; 42]).block_size_128(),
+            BloomFilter::new_from_vec::<128>(vec![42; 42]),
+        );
+        assert_eq!(
+            BloomFilter::from_vec(vec![42; 42]).block_size_64(),
+            BloomFilter::new_from_vec::<64>(vec![42; 42]),
+        );
     }
 }

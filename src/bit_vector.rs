@@ -1,17 +1,4 @@
-use std::{fmt, ops::Range};
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum BlockSizeError {
-    NonPowerOfTwo,
-    TooSmall,
-}
-
-impl fmt::Display for BlockSizeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-impl std::error::Error for BlockSizeError {}
+use std::ops::Range;
 
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
@@ -42,25 +29,6 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     const BLOCK_SIZE: usize = BLOCK_SIZE_BITS / 64;
     /// Used to shift u64 index
     const LOG2_BLOCK_SIZE: u32 = u32::ilog2(Self::BLOCK_SIZE as u32);
-
-    const fn is_power_of_2() -> bool {
-        2usize.pow(usize::ilog2(BLOCK_SIZE_BITS)) == BLOCK_SIZE_BITS
-    }
-
-    /// Returns a new `BlockedBitVec` with `num_blocks` blocks.
-    /// Returns an error if the number of bits per block, `BLOCK_SIZE_BITS`,
-    /// is not a power of 2 or is less than 64.
-    pub fn new(num_blocks: usize) -> Result<Self, BlockSizeError> {
-        if BLOCK_SIZE_BITS < 64 {
-            Err(BlockSizeError::TooSmall)
-        } else if !Self::is_power_of_2() {
-            Err(BlockSizeError::NonPowerOfTwo)
-        } else {
-            Ok(Self {
-                bits: vec![0u64; num_blocks * Self::BLOCK_SIZE],
-            })
-        }
-    }
 
     #[inline]
     const fn block_range(index: usize) -> Range<usize> {
@@ -160,28 +128,8 @@ mod tests {
     }
 
     #[test]
-    fn test_build() {
-        assert_eq!(BlockedBitVec::<1>::new(10), Err(BlockSizeError::TooSmall));
-        assert_eq!(BlockedBitVec::<63>::new(10), Err(BlockSizeError::TooSmall));
-        assert_eq!(
-            BlockedBitVec::<65>::new(10),
-            Err(BlockSizeError::NonPowerOfTwo)
-        );
-        assert_eq!(
-            BlockedBitVec::<129>::new(10),
-            Err(BlockSizeError::NonPowerOfTwo)
-        );
-
-        assert!(BlockedBitVec::<64>::new(10).is_ok());
-        assert!(BlockedBitVec::<128>::new(10).is_ok());
-        assert!(BlockedBitVec::<256>::new(10).is_ok());
-        assert!(BlockedBitVec::<512>::new(10).is_ok());
-        assert!(BlockedBitVec::<1024>::new(10).is_ok());
-    }
-
-    #[test]
     fn test_only_random_inserts_are_contained() {
-        let mut vec = BlockedBitVec::<64>::new(10).unwrap();
+        let mut vec = BlockedBitVec::<64>::from(vec![0; 80]);
         let mut control = HashSet::new();
         let mut rng = rand::thread_rng();
 
@@ -199,13 +147,5 @@ mod tests {
             BlockedBitVec::<64>::set_for_block(block_mut, bit_index);
             assert!(BlockedBitVec::<64>::check_for_block(block_mut, bit_index));
         }
-    }
-
-    #[test]
-    fn test_display_block_size_error() {
-        let x = BlockSizeError::NonPowerOfTwo;
-        let y = BlockSizeError::TooSmall;
-        assert_eq!(format!("{}", x), format!("{:?}", x),);
-        assert_eq!(format!("{}", y), format!("{:?}", y),);
     }
 }
