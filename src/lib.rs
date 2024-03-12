@@ -121,7 +121,7 @@ impl BloomFilter {
 
     /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
     ///
-    /// To fit the bit block size, `bit_vec` will be padded with `0u64`.
+    /// To fit the bit block size, `bit_vec` will be padded with `0u64`s and the end.
     ///
     /// # Panics
     /// Panics if the bit vector, `bit_vec`, is empty.
@@ -171,7 +171,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         (h & Self::BIT_INDEX_MASK) as usize
     }
 
-    /// Adds a value to the bloom filter. Returns true if the item may have already been a member.
+    /// Adds a value to the bloom filter. Returns `true` if the item may have already been a member.
     ///
     /// # Examples
     /// ```
