@@ -27,7 +27,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq
         self.data == other.data
     }
 }
-impl Eq for BuilderWithBits {}
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BuilderWithBits<BLOCK_SIZE_BITS, S> {}
 
 impl<const BLOCK_SIZE_BITS: usize> BuilderWithBits<BLOCK_SIZE_BITS> {
     /// Sets the seed for this builder. The later constructed [`BloomFilter`]
@@ -179,7 +179,10 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq
         self.desired_fp_rate == other.desired_fp_rate
     }
 }
-impl Eq for BuilderWithFalsePositiveRate {}
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq
+    for BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S>
+{
+}
 
 impl<const BLOCK_SIZE_BITS: usize> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS> {
     /// Sets the seed for this builder. The later constructed [`BloomFilter`]

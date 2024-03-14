@@ -291,7 +291,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq for BloomFilter<BLO
             && self.num_rounds == other.num_rounds
     }
 }
-impl Eq for BloomFilter {}
+impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BloomFilter<BLOCK_SIZE_BITS, S> {}
 
 /// Produces a new hash efficiently from two orignal hashes and a seed.
 ///
