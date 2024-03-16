@@ -1,5 +1,7 @@
 use super::next_hash;
 
+const MIN_TARGET_BITS: u64 = 8;
+
 #[inline]
 pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
     f64::ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64))
@@ -9,13 +11,6 @@ pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
 #[inline]
 pub(crate) fn work(bits: u64) -> u64 {
     match bits {
-        1 => 6,
-        2 => 5,
-        3 => 6,
-        4 => 4,
-        5 => 6,
-        6 => 5,
-        7 => 6,
         8 => 3,
         9 => 6,
         10 => 5,
@@ -58,51 +53,6 @@ pub(crate) fn work(bits: u64) -> u64 {
 pub(crate) fn signature(h1: &mut u64, h2: u64, num_bits: u64) -> u64 {
     let mut d = next_hash(h1, h2);
     match num_bits {
-        1 => {
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        2 => {
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        3 => {
-            d |= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        4 => {
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        5 => {
-            d &= next_hash(h1, h2);
-            d |= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        6 => {
-            d |= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
-        7 => {
-            d |= next_hash(h1, h2);
-            d |= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-            d &= next_hash(h1, h2);
-        }
         8 => {
             d &= next_hash(h1, h2);
             d &= next_hash(h1, h2);
@@ -267,7 +217,7 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
     // We will not accept rounds too low the variance is too high, and bits may be 0, which is bad for false positives.
     // TODO: a more precise formula for this
     let min_target_bits = match block_size {
-        512 => 8,
+        512 => MIN_TARGET_BITS,
         _ => 16,
     };
 
@@ -298,7 +248,7 @@ mod test {
     #[test]
     fn test_num_bits() {
         let mut rng = StdRng::seed_from_u64(42);
-        for target_bits in 1..=32 {
+        for target_bits in MIN_TARGET_BITS..=32 {
             let trials = 10_000;
             let mut total_bits = 0;
             for _ in 0..trials {
@@ -336,7 +286,7 @@ mod test {
     #[test]
     fn test_work_for_unknown_bits() {
         for i in 33..=1000 {
-            for j in 1..=32 {
+            for j in MIN_TARGET_BITS..=32 {
                 assert!(work(j) < work(i));
             }
         }

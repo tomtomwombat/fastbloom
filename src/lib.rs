@@ -293,7 +293,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq for BloomFilter<BLO
 }
 impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BloomFilter<BLOCK_SIZE_BITS, S> {}
 
-/// Produces a new hash efficiently from two orignal hashes and a seed.
+/// "Double hashing" produces a new hash efficiently from two orignal hashes.
 ///
 /// Modified from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>.
 #[inline]
