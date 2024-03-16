@@ -118,16 +118,8 @@ Times are for 1000 random strings. The bloom filters used ahash.
 2. Many bit positions can be derived from subsequent hashes
 
 #### One Real Hash Per Item
-The item is hashed once, producing the "real" hash. Two original hashes are derived:
-1. The first is the real hash
-2. The second is the last 32 bits for the first hash multiplied by constant number
 
-Subsequent hashes are derived by a common technique [explained in depth in this paper.](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
-The ith subsequent hash is derived by mixing the first two:
-```rust, ignore
-*hash1 = hash1.wrapping_add(hash2).rotate_left(5);
-return *hash1
-```
+`fastbloom` employs "hash composition" on two 32-bit halves of an original 64-bit hash. Each subsequent hash is derived by combining the original hash value with a different constant using modular arithmetic and bitwise operations. This results in a set of hash functions that are effectively independent and uniformly distributed, even though they are derived from the same original hash function. Computing the composition of two original hashes is faster than re-computing the hash with a different seed. This technique is [explained in depth in this paper.](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
 
 #### Many Bit Positions Derived from Subsequent Hashes
 
