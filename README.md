@@ -68,6 +68,8 @@ hash(4) ──────┬─────┬───────────
 
 ## Runtime Performance
 
+`fastbloom` is 50-1000% faster than existing bloom filters implemented in Rust.
+
 #### SipHash
 Runtime comparison to other bloom filter crates (all using SipHash).
 Note:
