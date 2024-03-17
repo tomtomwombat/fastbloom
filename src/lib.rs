@@ -19,7 +19,7 @@ mod signature;
 /// To insert, a number of bits are set at positions based on the item's hash in one of the underlying bit vector's block.
 /// To check membership, a number of bits are checked at positions based on the item's hash in one of the underlying bit vector's block.
 ///
-/// Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change.
+/// Once constructed, neither the Bloom filter's underlying memory usage nor number of bits per item change.
 ///
 /// # Examples
 /// Basic usage:
@@ -171,7 +171,12 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         (h & Self::BIT_INDEX_MASK) as usize
     }
 
-    /// Adds a value to the bloom filter. Returns `true` if the item may have already been a member.
+    /// Inserts an element into the Bloom filter.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
+    /// `false` otherwise.
     ///
     /// # Examples
     /// ```
@@ -204,8 +209,11 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         previously_contained
     }
 
-    /// Returns `false` if the bloom filter definitely does not contain a value.
-    /// Returns `true` if the bloom filter may contain a value, with a degree of certainty.
+    /// Checks if an element is possibly in the Bloom filter.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the item is possibly in the Bloom filter, `false` otherwise.
     ///
     /// # Examples
     ///
@@ -238,12 +246,12 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         self.target_hashes as u32
     }
 
-    /// Returns the total number of in-memory bits supporting the bloom filter.
+    /// Returns the total number of in-memory bits supporting the Bloom filter.
     pub fn num_bits(&self) -> usize {
         self.num_blocks() * BLOCK_SIZE_BITS
     }
 
-    /// Returns the total number of in-memory blocks supporting the bloom filter.
+    /// Returns the total number of in-memory blocks supporting the Bloom filter.
     /// Each block is `BLOCK_SIZE_BITS` bits.
     pub fn num_blocks(&self) -> usize {
         self.bits.num_blocks()
@@ -265,7 +273,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         self.bits.as_slice()
     }
 
-    /// Clear all of the bits in the bloom filter, removing all items.
+    /// Clear all of the bits in the Bloom filter, removing all items.
     #[inline]
     pub fn clear(&mut self) {
         self.bits.clear();

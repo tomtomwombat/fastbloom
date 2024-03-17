@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 use crate::signature;
 
-/// A bloom filter builder with an immutable number of bits.
+/// A Bloom filter builder with an immutable number of bits.
 ///
 /// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
 ///
@@ -107,7 +107,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
 
     /// "Consumes" this builder, using the provided `expected_num_items` to return an
     /// empty [`BloomFilter`]. The number of hashes is optimized based on `expected_num_items`
-    /// to maximize bloom filter accuracy (minimize false positives chance on [`BloomFilter::contains`]).
+    /// to maximize Bloom filter accuracy (minimize false positives chance on [`BloomFilter::contains`]).
     /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
     ///
     /// # Examples
@@ -127,7 +127,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
     /// all values in `items`. Like [`BuilderWithBits::expected_items`], the number of hashes per item
-    /// is optimized based on `items.len()` to maximize bloom filter accuracy
+    /// is optimized based on `items.len()` to maximize Bloom filter accuracy
     /// (minimize false positives chance on [`BloomFilter::contains`]).
     ///
     /// # Examples
@@ -155,7 +155,7 @@ fn optimal_size(items_count: f64, fp_p: f64) -> usize {
     std::cmp::max(result, 512)
 }
 
-/// A bloom filter builder with an immutable false positive rate.
+/// A Bloom filter builder with an immutable false positive rate.
 ///
 /// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
 ///
@@ -275,7 +275,7 @@ macro_rules! impl_builder_block_size {
     ($($size:literal = $fn_name:ident),* $(,)*) => (
         $(
             impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S> {
-                #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
+                #[doc = concat!("Set the block size of the Bloom filter to ", stringify!($size), " bits.")]
                 #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
                 #[doc = "# Example"]
                 #[doc = "```"]
@@ -291,7 +291,7 @@ macro_rules! impl_builder_block_size {
             }
 
             impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BITS, S> {
-                #[doc = concat!("Set the block size of the bloom filter to ", stringify!($size), " bits.")]
+                #[doc = concat!("Set the block size of the Bloom filter to ", stringify!($size), " bits.")]
                 #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
                 #[doc = "# Example"]
                 #[doc = "```"]
