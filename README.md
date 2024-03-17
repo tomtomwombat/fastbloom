@@ -45,9 +45,8 @@ let filter = BloomFilter::with_num_bits(1024)
 ```
 
 ## Background
-Bloom filters are space efficient approximate membership set data structures. False positives from a membership check are possible, but false negatives are not. [See more.](https://en.wikipedia.org/wiki/Bloom_filter)
+Bloom filters are space-efficient approximate membership set data structures supported by an underlying bit array to track item membership. To insert/check membership, a number of bits are set/checked at positions based on the item's hash. False positives from a membership check are possible, but false negatives are not. Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change. [See more.](https://en.wikipedia.org/wiki/Bloom_filter)
 
-Blocked bloom filters are supported by an underlying bit vector, chunked into fixed size "blocks", to track item membership. To insert/check membership, a number of bits are set/checked at positions based on the item's hash in one of the bit vector's blocks.
 ```text
 hash(4) ──────┬─────┬───────────────┐
               ↓     ↓               ↓
@@ -56,16 +55,16 @@ hash(4) ──────┬─────┬───────────
   └───────────┴───────────┴──── hash(3) (not in the set)
 
 ```
-[See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
 
-Once constructed, neither the bloom filter's underlying memory usage nor number of bits per item change.
-
+`fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher.
 
 ## Implementation
 
 `fastbloom` is **several times faster** than existing bloom filters and scales very well with the number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one real hash per item**, and leverages other research findings on bloom filters.
 
-`fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher.
+
+`fastbloom` is implemented as a blocked bloom filter. Blocked bloom filters partition their underlying bit array into sub-array “blocks”. Bits set and checked from the item’s hash are constrained to a single block instead of the entire bit array. This allows for better cache-efficiency and the opportunity to leverage SIMD and [SWAR](https://en.wikipedia.org/wiki/SWAR) operations when generating bits from an item’s hash. [See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
+
 
 ## Runtime Performance
 
