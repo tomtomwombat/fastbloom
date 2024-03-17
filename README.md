@@ -115,8 +115,8 @@ Times are for 1000 random strings. The bloom filters used ahash.
 ## How it Works
 
 `fastbloom` attributes its performance to two insights:
-1. Only one real hash per item is needed, subsequent hashes can be cheaply derived from the real hash
-2. Many bit positions can be derived from subsequent hashes
+1. Only one real hash per item is needed, subsequent hashes can be cheaply derived from the real hash using "hash composition"
+2. Many bit positions can be derived from a few subsequent hashes through SWAR-like operations
 
 #### One Real Hash Per Item
 
