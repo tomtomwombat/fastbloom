@@ -8,7 +8,7 @@
     <img src="https://codecov.io/gh/tomtomwombat/fastbloom/branch/main/graph/badge.svg">
 </a>
 
-The fastest bloom filter in Rust. No accuracy compromises. Compatible with any hasher.
+The fastest bloom filter in Rust. Compatible with any hasher.
 
 
 ## Usage
@@ -16,7 +16,7 @@ The fastest bloom filter in Rust. No accuracy compromises. Compatible with any h
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.5.0"
+fastbloom = "0.5.1"
 ```
 Basic usage:
 ```rust
