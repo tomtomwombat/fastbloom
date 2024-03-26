@@ -17,6 +17,7 @@ maintenance = { status = "actively-developed"}
 [dependencies]
 rand = "0.8.5"
 siphasher = "1.0.0"
+wide = "0.7.15"
 
 [dev-dependencies]
 rand_regex = "0.16.0"
