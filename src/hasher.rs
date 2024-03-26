@@ -52,7 +52,8 @@ impl Default for RandomDefaultHasher {
 
         #[cfg(not(feature = "rand"))]
         {
-            getrandom::getrandom(&mut seed).expect("Unable to source entropy from OS/Hardware sources");
+            getrandom::getrandom(&mut seed)
+                .expect("Unable to obtain entropy from OS/Hardware sources");
         }
         #[cfg(feature = "rand")]
         {
