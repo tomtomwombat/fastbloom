@@ -149,6 +149,17 @@ Note:
 
 In reality, the Bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on using SIMD intrinsics. The number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.
 
+## WASM Support on the web
+
+To enable support for WASM on web platforms, `getrandom` needs to be configured to support the browser environment. Add the following to your project's `Cargo.toml`:
+
+```toml
+[target.'cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+```
+
+This applies to whether you are using the default `rand` hash initialization or the fallback `getrandom` entropy sourcing.
+
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
 - [Bloom Filter - Brilliant](https://brilliant.org/wiki/bloom-filter/)

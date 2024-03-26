@@ -14,11 +14,17 @@ readme = "README.md"
 [badges]
 maintenance = { status = "actively-developed"}
 
+[features]
+default = ["rand"]
+rand = ["dep:rand"]
+
 [dependencies]
-rand = "0.8.5"
+getrandom = "0.2"
+rand = { version = "0.8.5", optional = true }
 siphasher = "1.0.0"
 wide = "0.7.15"
 
 [dev-dependencies]
+rand = "0.8.5"
 rand_regex = "0.16.0"
 ahash = "0.8.6"
