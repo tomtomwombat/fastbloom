@@ -10,6 +10,9 @@
 
 The fastest Bloom filter in Rust. Compatible with any hasher.
 
+## Overview
+
+`fastbloom` is a SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
 
 ## Usage
 
@@ -56,11 +59,9 @@ hash(4) ──────┬─────┬───────────
 
 ```
 
-`fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher.
-
 ## Implementation
 
-`fastbloom` is **several times faster** than existing Bloom filters and scales very well with the number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one real hash per item**, and leverages other research findings on Bloom filters.
+`fastbloom` is **several times faster** than existing Bloom filters and scales very well with the number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one real hash per item**, employs SIMD acceleration, and leverages other research findings on Bloom filters.
 
 
 `fastbloom` is implemented as a blocked Bloom filter. Blocked Bloom filters partition their underlying bit array into sub-array “blocks”. Bits set and checked from the item’s hash are constrained to a single block instead of the entire bit array. This allows for better cache-efficiency and the opportunity to leverage SIMD and [SWAR](https://en.wikipedia.org/wiki/SWAR) operations when generating bits from an item’s hash. [See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
@@ -68,23 +69,26 @@ hash(4) ──────┬─────┬───────────
 
 ## Runtime Performance
 
-`fastbloom` is 50-1000% faster than existing Bloom filters implemented in Rust.
+`fastbloom` is 50-10000% faster than existing Bloom filters implemented in Rust.
 
 #### SipHash
 Runtime comparison to other Bloom filter crates (all using SipHash).
 Note:
 - The number hashes for all Bloom filters is derived to optimize accuracy, meaning fewer items in the Bloom filters result in more hashes per item and generally slower performance.
-- As number of items (input) increases, the accuracy of the Bloom filter decreases. 1000 random strings were used to test membership.
+- As number of items (input) increases, the accuracy of the Bloom filter decreases. Results are amortized over 1000 random strings.
 
-![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/c74ea802-a7a2-4df7-943c-92b3bcec982e)
-![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/326c2558-6f86-4675-99cb-c95aed73e90d)
+
+![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/b200796d-45fc-4a28-8162-e3d6ee484a39)
+![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/5a8de330-cf22-4855-861b-b81064ab99ec)
+
 
 
 #### Any Hash Goes
 The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use a similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
 
-![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/9bf303fd-897d-412b-9f42-c57e6460ead0)
-![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/060e739b-7fb2-4c18-8086-7034f6fb92c0)
+![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/03889eb0-6146-4fe2-a7b4-c41d6166f2d0)
+![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/4bb47fce-8f90-48c9-a0b7-4efa2f4d1ba1)
+
 
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
@@ -103,11 +107,11 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 `fastbloom` offers 4 different block sizes: 64, 128, 256, and 512 bits. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
 
 #### Runtime Performance
-Times are for 1000 random strings. The Bloom filters used ahash.
+Times are amortized over 1000 random strings. The Bloom filters used ahash.
 
-![member-fastbloom-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/44073965-cc2d-4e70-9151-7e821b30b208)
-![non-member-fastbloom-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/6e5ee0e0-f460-46b9-95d6-f4b91d9fa424)
 
+![member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/1f086174-6093-46ed-b982-81a94443f37b)
+![non-member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/c955c737-68c8-4120-8f57-4e2b6f4630d6)
 
 #### Accuracy
 ![fastbloom-block-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/c8e88ddb-3617-4d85-8f76-b606b4e98e13)
@@ -116,7 +120,7 @@ Times are for 1000 random strings. The Bloom filters used ahash.
 
 `fastbloom` attributes its performance to two insights:
 1. Only one real hash per item is needed, subsequent hashes can be cheaply derived from the real hash using "hash composition"
-2. Many bit positions can be derived from a few subsequent hashes through SWAR-like operations
+2. Many bit positions can be derived from a few subsequent hashes through SIMD and SWAR-like operations
 
 #### One Real Hash Per Item
 
@@ -145,7 +149,7 @@ Note:
 - Given 64 bits, and 24 hashes, a bit has probability (63/64)^24 to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is 64 - (64 * (63/64)^24) ~= 20.
 - A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits, etc.
 
-In reality, the Bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on, and the number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.
+In reality, the Bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on using SIMD intrinsics. The number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
