@@ -120,51 +120,6 @@ pub(crate) trait Signature: Sized + AddAssign + Copy + BitAndAssign + BitOrAssig
     fn signature(h1: &mut Self, h2: Self, num_bits: u64) -> Self {
         let mut d = Self::next_hash(h1, h2);
         match num_bits {
-            1 => {
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            2 => {
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            3 => {
-                d |= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            4 => {
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            5 => {
-                d &= Self::next_hash(h1, h2);
-                d |= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            6 => {
-                d |= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
-            7 => {
-                d |= Self::next_hash(h1, h2);
-                d |= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-                d &= Self::next_hash(h1, h2);
-            }
             8 => {
                 d &= Self::next_hash(h1, h2);
                 d &= Self::next_hash(h1, h2);
