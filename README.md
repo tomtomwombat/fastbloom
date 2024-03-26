@@ -75,12 +75,12 @@ hash(4) ──────┬─────┬───────────
 Runtime comparison to other Bloom filter crates (all using SipHash).
 Note:
 - The number hashes for all Bloom filters is derived to optimize accuracy, meaning fewer items in the Bloom filters result in more hashes per item and generally slower performance.
-- As number of items (input) increases, the accuracy of the Bloom filter decreases. Results are amortized over 1000 random strings.
+- As number of items (input) increases, the accuracy of the Bloom filter decreases.
 
 
 ![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/b200796d-45fc-4a28-8162-e3d6ee484a39)
 ![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/5a8de330-cf22-4855-861b-b81064ab99ec)
-
+> Results are amortized over 1000 random strings
 
 
 #### Any Hash Goes
@@ -88,7 +88,7 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 ![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/03889eb0-6146-4fe2-a7b4-c41d6166f2d0)
 ![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/4bb47fce-8f90-48c9-a0b7-4efa2f4d1ba1)
-
+> Results are amortized over 1000 random strings
 
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
@@ -107,11 +107,9 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 `fastbloom` offers 4 different block sizes: 64, 128, 256, and 512 bits. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
 
 #### Runtime Performance
-Times are amortized over 1000 random strings. The Bloom filters used ahash.
-
-
 ![member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/1f086174-6093-46ed-b982-81a94443f37b)
 ![non-member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/c955c737-68c8-4120-8f57-4e2b6f4630d6)
+> Results are amortized over 1000 random strings. The Bloom filters used ahash.
 
 #### Accuracy
 ![fastbloom-block-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/c8e88ddb-3617-4d85-8f76-b606b4e98e13)
