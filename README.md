@@ -138,7 +138,7 @@ Other Bloom filters derive 24 positions based on 24 hashes of the item:
 - ...
 - `hash23(item) % 64`
 
-Instead, `fastbloom` derives a hash of the item with ~20 bits set and then adds it to the bit vector with a bitwise OR:
+Instead, `fastbloom` uses a "sparse hash", a composed hash with less than 32 expected number of bits set. In this case, a ~20 bit set sparse hash is derived from the item and added to the bit vector with a bitwise OR:
 - `hash0(item) & hash1(item) | hash2(item) & hash3(item)`
 
 That's 4 hashes versus 24!

@@ -8,8 +8,8 @@ mod builder;
 pub use builder::{BuilderWithBits, BuilderWithFalsePositiveRate};
 mod bit_vector;
 use bit_vector::BlockedBitVec;
-mod signature;
-use signature::Signature;
+mod sparse_hash;
+use sparse_hash::SparseHash;
 use wide::u64x4;
 
 /// A space efficient approximate membership set data structure.
@@ -155,7 +155,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         // TODO: a more precise formula for this
         let min_hashes_mult = (BLOCK_SIZE_BITS as f64) / (512f64);
 
-        let max_hashes = block_size / 64.0f64 * signature::hashes_for_bits(32) * min_hashes_mult;
+        let max_hashes = block_size / 64.0f64 * sparse_hash::hashes_for_bits(32) * min_hashes_mult;
         let hashes_per_block = block_size / items_per_block * f64::ln(2.0f64);
         if hashes_per_block > max_hashes {
             max_hashes
@@ -206,7 +206,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
                 256 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
-                    let data = u64x4::signature(&mut hashes_1, hashes_2, num_rounds);
+                    let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
                     previously_contained &= u64x4::matches(self.bits.get_block(block_index), data);
                     u64x4::set(self.bits.get_block_mut(block_index), data);
                 }
@@ -214,7 +214,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
                     let hashes_2 = u64x4::h2(h2);
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     for i in 0..2 {
-                        let data = u64x4::signature(&mut hashes_1, hashes_2, num_rounds);
+                        let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
                         previously_contained &=
                             u64x4::matches(&self.bits.get_block(block_index)[4 * i..], data);
                         u64x4::set(&mut self.bits.get_block_mut(block_index)[4 * i..], data);
@@ -222,7 +222,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
                 }
                 _ => {
                     for i in 0..self.bits.get_block(block_index).len() {
-                        let data = u64::signature(&mut h1, h2, num_rounds);
+                        let data = u64::sparse_hash(&mut h1, h2, num_rounds);
                         let block = &mut self.bits.get_block_mut(block_index);
                         previously_contained &= (block[i] & data) == data;
                         block[i] |= data;
@@ -259,19 +259,19 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
                 256 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
-                    let data = u64x4::signature(&mut hashes_1, hashes_2, num_rounds);
+                    let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
                     u64x4::matches(self.bits.get_block(block_index), data)
                 }
                 512 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
                     (0..2).all(|i| {
-                        let data = u64x4::signature(&mut hashes_1, hashes_2, num_rounds);
+                        let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
                         u64x4::matches(&self.bits.get_block(block_index)[4 * i..], data)
                     })
                 }
                 _ => (0..block.len()).all(|i| {
-                    let data = u64::signature(&mut h1, h2, num_rounds);
+                    let data = u64::sparse_hash(&mut h1, h2, num_rounds);
                     (block[i] & data) == data
                 }),
             }

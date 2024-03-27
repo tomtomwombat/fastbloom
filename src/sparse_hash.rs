@@ -41,7 +41,7 @@ pub(crate) fn work(bits: u64) -> u64 {
     }
 }
 
-impl Signature for u64 {
+impl SparseHash for u64 {
     #[inline]
     fn h1(h1: &mut u64, _: u64) -> Self {
         *h1
@@ -69,7 +69,7 @@ impl Signature for u64 {
     }
 }
 
-impl Signature for u64x4 {
+impl SparseHash for u64x4 {
     #[inline]
     fn h1(h1: &mut u64, h2: u64) -> Self {
         [
@@ -96,7 +96,7 @@ impl Signature for u64x4 {
     }
 }
 
-pub(crate) trait Signature: Sized + AddAssign + Copy + BitAndAssign + BitOrAssign {
+pub(crate) trait SparseHash: Sized + AddAssign + Copy + BitAndAssign + BitOrAssign {
     fn h1(h1: &mut u64, h2: u64) -> Self;
     fn h2(h2: u64) -> Self;
     fn matches(data: &[u64], x: Self) -> bool;
@@ -114,10 +114,10 @@ pub(crate) trait Signature: Sized + AddAssign + Copy + BitAndAssign + BitOrAssig
     /// etc
     ///
     /// If the bloom filter has a higher number of hashes to be performed per item,
-    /// we can use "signatures" to quickly get many index bits, and use traditional
+    /// we can use sparse hashes to quickly get many index bits, and use traditional
     /// index setting for the remainder of hashes.
     #[inline]
-    fn signature(h1: &mut Self, h2: Self, num_bits: u64) -> Self {
+    fn sparse_hash(h1: &mut Self, h2: Self, num_bits: u64) -> Self {
         let mut d = Self::next_hash(h1, h2);
         match num_bits {
             8 => {
@@ -292,7 +292,7 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
         let hashes_covered = hashes_for_bits(target_bits_per_u64_per_item);
         let remaining = (total_num_hashes - (hashes_covered * num_u64s_per_block)).round();
         if remaining < 0.0 {
-            continue; // signature has too many bits
+            continue; // sparse hash has too many bits
         }
         let hashing_work = remaining as u64;
         let work_for_target_bits = work(target_bits_per_u64_per_item);
@@ -321,7 +321,7 @@ mod test {
             for _ in 0..trials {
                 let mut h1 = rng.gen();
                 let h2 = rng.gen();
-                let h = u64::signature(&mut h1, h2, target_bits);
+                let h = u64::sparse_hash(&mut h1, h2, target_bits);
                 total_bits += h.count_ones();
             }
             assert_eq!(

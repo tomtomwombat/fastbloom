@@ -1,7 +1,7 @@
 use crate::{BloomFilter, BuildHasher, DefaultHasher};
 use std::hash::Hash;
 
-use crate::signature;
+use crate::sparse_hash;
 
 /// A Bloom filter builder with an immutable number of bits.
 ///
@@ -78,23 +78,23 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
         self.hashes_f(num_hashes as f64)
     }
 
-    /// To generate ~`total_num_hashes` we'll use a combination of traditional index derived from hashes and "signatures".
-    /// Signature's are per u64 in the block, and for that u64 represent some indexes already set.
-    /// "rounds" are the amount of work/iterations we need to do to get a signature.
-    /// For more on signatures, see "BloomFilter::signature".
+    /// To generate ~`total_num_hashes` we'll use a combination of traditional index derived from hashes and "sparse hashes".
+    /// sparse hashes's are per u64 in the block, and for that u64 represent some indexes already set.
+    /// "rounds" are the amount of work/iterations we need to do to get a sparse hash.
+    /// For more on sparse hashes, see "BloomFilter::sparse_hash".
     ///
     /// For example, if our target total hashes 40, and we have a block of two u64s,
     /// we'll require ~40 bits (ignoring probability collisions for simplicity in this example) set across the two u64s.
-    /// for each u64 in the block, generate two signatures each with about 16 bits set (2 rounds each).
+    /// for each u64 in the block, generate two sparse hashes each with about 16 bits set (2 rounds each).
     /// then calcuate 8 bit indexes from the hash to cover the remaining. 16 + 16 + 8 = 40.
     /// the total work here is 4 rounds + 8 hashes, instead of 40 hashes.
     ///
     /// Note:
     /// - the min number of rounds is 1, generating around ~32 bits, which is the max entropy in the u64.
-    /// - the max number of rounds is ~4. That produces a signature of ~4 bits set (1/2^4), at which point we may as well calculate 4 bit indexes normally.
+    /// - the max number of rounds is ~4. That produces a sparse hash of ~4 bits set (1/2^4), at which point we may as well calculate 4 bit indexes normally.
     fn hashes_f(self, total_num_hashes: f64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
         let (num_hashes, num_rounds) =
-            signature::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
+            sparse_hash::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
 
         BloomFilter {
             bits: self.data.into(),
