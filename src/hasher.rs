@@ -1,4 +1,3 @@
-use rand::Rng;
 use siphasher::sip::SipHasher13;
 use std::hash::{BuildHasher, Hasher};
 
@@ -49,11 +48,20 @@ impl RandomDefaultHasher {
 impl Default for RandomDefaultHasher {
     #[inline]
     fn default() -> Self {
-        let mut rng = rand::thread_rng();
         let mut seed = [0u8; 16];
-        for b in seed.iter_mut() {
-            *b = rng.gen();
+
+        #[cfg(not(feature = "rand"))]
+        {
+            getrandom::getrandom(&mut seed)
+                .expect("Unable to obtain entropy from OS/Hardware sources");
         }
+        #[cfg(feature = "rand")]
+        {
+            use rand::RngCore;
+
+            rand::thread_rng().fill_bytes(&mut seed);
+        }
+
         Self::seeded(&seed)
     }
 }
