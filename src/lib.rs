@@ -10,7 +10,7 @@ mod bit_vector;
 use bit_vector::BlockedBitVec;
 mod sparse_hash;
 use sparse_hash::SparseHash;
-use wide::u64x4;
+use wide::{u64x2, u64x4};
 
 /// A space efficient approximate membership set data structure.
 /// False positives from [`contains`](Self::contains) are possible, but false negatives
@@ -192,23 +192,31 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     #[inline]
     pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
-        let block_index = block_index(self.num_blocks(), h1);
-        let block = &mut self.bits.get_block_mut(block_index);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
+            let index = block_index(self.num_blocks(), h1);
+            let block = &mut self.bits.get_block_mut(index);
             previously_contained &= BlockedBitVec::<BLOCK_SIZE_BITS>::set_for_block(
                 block,
                 Self::bit_index(&mut h1, h2),
             );
         }
         if let Some(num_rounds) = self.num_rounds {
+            let index = block_index(self.num_blocks(), h1);
             match BLOCK_SIZE_BITS {
+                128 => {
+                    let mut hashes_1 = u64x2::h1(&mut h1, h2);
+                    let hashes_2 = u64x2::h2(h2);
+                    let data = u64x2::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
+                    previously_contained &= u64x2::matches(self.bits.get_block(index), data);
+                    u64x2::set(self.bits.get_block_mut(index), data);
+                }
                 256 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
                     let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
-                    previously_contained &= u64x4::matches(self.bits.get_block(block_index), data);
-                    u64x4::set(self.bits.get_block_mut(block_index), data);
+                    previously_contained &= u64x4::matches(self.bits.get_block(index), data);
+                    u64x4::set(self.bits.get_block_mut(index), data);
                 }
                 512 => {
                     let hashes_2 = u64x4::h2(h2);
@@ -216,14 +224,14 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
                     for i in 0..2 {
                         let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
                         previously_contained &=
-                            u64x4::matches(&self.bits.get_block(block_index)[4 * i..], data);
-                        u64x4::set(&mut self.bits.get_block_mut(block_index)[4 * i..], data);
+                            u64x4::matches(&self.bits.get_block(index)[4 * i..], data);
+                        u64x4::set(&mut self.bits.get_block_mut(index)[4 * i..], data);
                     }
                 }
                 _ => {
-                    for i in 0..self.bits.get_block(block_index).len() {
+                    for i in 0..self.bits.get_block(index).len() {
                         let data = u64::sparse_hash(&mut h1, h2, num_rounds);
-                        let block = &mut self.bits.get_block_mut(block_index);
+                        let block = &mut self.bits.get_block_mut(index);
                         previously_contained &= (block[i] & data) == data;
                         block[i] |= data;
                     }
@@ -250,24 +258,32 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     #[inline]
     pub fn contains(&self, val: &(impl Hash + ?Sized)) -> bool {
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
-        let block_index = block_index(self.num_blocks(), h1);
-        let block = &self.bits.get_block(block_index);
         (0..self.num_hashes).into_iter().all(|_| {
+            let index = block_index(self.num_blocks(), h1);
+            let block = &self.bits.get_block(index);
             BlockedBitVec::<BLOCK_SIZE_BITS>::check_for_block(block, Self::bit_index(&mut h1, h2))
         }) && (if let Some(num_rounds) = self.num_rounds {
+            let index = block_index(self.num_blocks(), h1);
+            let block = &self.bits.get_block(index);
             match BLOCK_SIZE_BITS {
+                128 => {
+                    let mut hashes_1 = u64x2::h1(&mut h1, h2);
+                    let hashes_2 = u64x2::h2(h2);
+                    let data = u64x2::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
+                    u64x2::matches(block, data)
+                }
                 256 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
                     let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
-                    u64x4::matches(self.bits.get_block(block_index), data)
+                    u64x4::matches(block, data)
                 }
                 512 => {
                     let mut hashes_1 = u64x4::h1(&mut h1, h2);
                     let hashes_2 = u64x4::h2(h2);
                     (0..2).all(|i| {
                         let data = u64x4::sparse_hash(&mut hashes_1, hashes_2, num_rounds);
-                        u64x4::matches(&self.bits.get_block(block_index)[4 * i..], data)
+                        u64x4::matches(&block[4 * i..], data)
                     })
                 }
                 _ => (0..block.len()).all(|i| {

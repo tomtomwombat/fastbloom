@@ -1,5 +1,5 @@
 use std::ops::{AddAssign, BitAndAssign, BitOrAssign};
-use wide::u64x4;
+use wide::{u64x2, u64x4};
 
 const MIN_TARGET_BITS: u64 = 8;
 
@@ -83,6 +83,27 @@ impl SparseHash for u64x4 {
     #[inline]
     fn h2(h2: u64) -> Self {
         Self::splat(h2.wrapping_mul(4))
+    }
+    #[inline]
+    fn matches(data: &[u64], x: Self) -> bool {
+        let t = unsafe { std::mem::transmute::<&[u64], &[Self]>(data) };
+        (t[0] & x) == x
+    }
+    #[inline]
+    fn set(data: &mut [u64], x: Self) {
+        let t = unsafe { std::mem::transmute::<&mut [u64], &mut [Self]>(data) };
+        t[0] |= x;
+    }
+}
+
+impl SparseHash for u64x2 {
+    #[inline]
+    fn h1(h1: &mut u64, h2: u64) -> Self {
+        [u64::next_hash(h1, h2), u64::next_hash(h1, h2)].into()
+    }
+    #[inline]
+    fn h2(h2: u64) -> Self {
+        Self::splat(h2.wrapping_mul(2))
     }
     #[inline]
     fn matches(data: &[u64], x: Self) -> bool {
@@ -334,11 +355,11 @@ mod test {
     #[test]
     fn hash_creation() {
         for block_size in [64, 128, 256, 512] {
-            for num_hashes in 0..5000 {
+            for num_hashes in 1..5000 {
                 let (hashes, num_rounds) = optimize_hashing(num_hashes as f64, block_size);
-                assert!(num_rounds.unwrap_or(0) <= 64);
+                assert!(num_rounds.unwrap_or(0) <= 32);
                 match num_rounds {
-                    None => assert_eq!(num_hashes, hashes, "None"),
+                    None => assert_eq!(num_hashes, hashes, "Not equal when num rounds is None"),
                     Some(x) => {
                         let hashes_for_rounds =
                             (hashes_for_bits(x) * (block_size / 64) as f64).round() as u64;
