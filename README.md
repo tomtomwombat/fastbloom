@@ -8,7 +8,7 @@
     <img src="https://codecov.io/gh/tomtomwombat/fastbloom/branch/main/graph/badge.svg">
 </a>
 
-The fastest Bloom filter in Rust. Compatible with any hasher.
+The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any hasher.
 
 ## Overview
 
@@ -19,7 +19,7 @@ The fastest Bloom filter in Rust. Compatible with any hasher.
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.5.1"
+fastbloom = "0.6.0"
 ```
 Basic usage:
 ```rust
@@ -64,7 +64,7 @@ hash(4) ──────┬─────┬───────────
 `fastbloom` is **several times faster** than existing Bloom filters and scales very well with the number of hashes per item. In all cases, `fastbloom` maintains competitive false positive rates. `fastbloom` is blazingly fast because it uses L1 cache friendly blocks, efficiently derives many index bits from **only one real hash per item**, employs SIMD acceleration, and leverages other research findings on Bloom filters.
 
 
-`fastbloom` is implemented as a blocked Bloom filter. Blocked Bloom filters partition their underlying bit array into sub-array “blocks”. Bits set and checked from the item’s hash are constrained to a single block instead of the entire bit array. This allows for better cache-efficiency and the opportunity to leverage SIMD and [SWAR](https://en.wikipedia.org/wiki/SWAR) operations when generating bits from an item’s hash. [See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
+`fastbloom` is implemented as a partial blocked Bloom filter. Blocked Bloom filters partition their underlying bit array into sub-array “blocks”. Bits set and checked from the item’s hash are constrained to a single block instead of the entire bit array. This allows for better cache-efficiency and the opportunity to leverage SIMD and [SWAR](https://en.wikipedia.org/wiki/SWAR) operations when generating bits from an item’s hash. [See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf) Half of `fastbloom`'s hash indexes span the entire bit array while others are confined to a single block.
 
 
 ## Runtime Performance
