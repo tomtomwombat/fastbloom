@@ -90,7 +90,7 @@ These crates use xxhash. `fastbloom` is also configured to use xxhash.
 ![xxhash-non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/380c55e6-2c21-419d-994d-36de2b828878)
 > Results are amortized over 1000 random strings.
 >
-> sbbf-rs-safe is hardcoded for 8 index bits per item, explaining very constant and strong performance, but results in less accuracy as shown in the next section "False Positive Performance".
+> sbbf-rs-safe is hardcoded for 8 index bits per item, explaining the constant and fast performance, but this results in less accuracy as shown in the next section "False Positive Performance".
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
