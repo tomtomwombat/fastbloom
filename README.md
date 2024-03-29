@@ -12,7 +12,7 @@ The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any h
 
 ## Overview
 
-`fastbloom` is a SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
+`fastbloom` is an accurate SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
 
 ## Usage
 
@@ -78,18 +78,19 @@ Note:
 - As number of items (input) increases, the accuracy of the Bloom filter decreases.
 
 
-![member](https://github.com/tomtomwombat/fastbloom/assets/45644087/b200796d-45fc-4a28-8162-e3d6ee484a39)
-![non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/5a8de330-cf22-4855-861b-b81064ab99ec)
+![sip-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/bcb76949-d088-4002-a268-be62c563ddba)
+![sip-non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/78845b84-7381-45cd-8bed-5c063202166f)
 > Results are amortized over 1000 random strings
 
 
-#### Any Hash Goes
-The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipHash, so it is not fair to compare above. However, we can configure `fastbloom` to use a similarly fast hash, ahash, and compare. 1000 random strings were used to test membership.
+#### XXHash
+These crates use xxhash. `fastbloom` is also configured to use xxhash.
 
-![member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/03889eb0-6146-4fe2-a7b4-c41d6166f2d0)
-![non-member-fb](https://github.com/tomtomwombat/fastbloom/assets/45644087/4bb47fce-8f90-48c9-a0b7-4efa2f4d1ba1)
-> Results are amortized over 1000 random strings
-
+![xxhash-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/501f966e-abb0-47a9-9a74-aa3bb240fd12)
+![xxhash-non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/380c55e6-2c21-419d-994d-36de2b828878)
+> Results are amortized over 1000 random strings.
+>
+> sbbf-rs-safe is hardcoded for 8 index bits per item, explaining very constant and strong performance, but results in less accuracy as shown in the next section "False Positive Performance".
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
@@ -97,22 +98,32 @@ The fastbloom-rs crate (similarily named) uses xxhash, which is faster than SipH
 
 `fastbloom` does not compromise accuracy. Below is a comparison of false positive rates with other Bloom filter crates:
 
-![bloom-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/07e22ab3-f777-4e4e-8910-4f1c764e4134)
+![fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/54ed9442-0e6b-41f9-a25e-7afd561bdd84)
+
 > The Bloom filters and a control hash set were populated with a varying number of random 64 bit integers ("Number of Items"). Then 100,000 random 64 bit integers were checked: false positives are numbers that do NOT exist in the control hash set but do report as existing in the Bloom filter.
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
 ## Comparing Block Sizes
 
-`fastbloom` offers 4 different block sizes: 64, 128, 256, and 512 bits. 512 bits is the default. Larger block sizes generally have slower performance but are more accurate.
+`fastbloom` offers 4 different block sizes: 64, 128, 256, and 512 bits.
+
+```rust
+use fastbloom::BloomFilter;
+
+let filter = BloomFilter::with_num_bits(1024).block_size_128().expected_items(2);
+```
+
+512 bits is the default. Larger block sizes generally have slower performance but are more accurate, e.g. a Bloom filter with 64 bit blocks is very fast but slightly less accurate.
 
 #### Runtime Performance
-![member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/1f086174-6093-46ed-b982-81a94443f37b)
-![non-member-blocks](https://github.com/tomtomwombat/fastbloom/assets/45644087/c955c737-68c8-4120-8f57-4e2b6f4630d6)
+![ahash-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/a10ee7b7-9acb-42d2-9bcf-985f8970b482)
+![ahash-non-member](https://github.com/tomtomwombat/fastbloom/assets/45644087/a1724c3f-95cc-4a2e-a693-3b25df369193)
+
 > Results are amortized over 1000 random strings. The Bloom filters used ahash.
 
 #### Accuracy
-![fastbloom-block-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/c8e88ddb-3617-4d85-8f76-b606b4e98e13)
+![blocks-fp](https://github.com/tomtomwombat/fastbloom/assets/45644087/13f74298-2f47-4683-9da3-34bb0a3d3b9a)
 
 ## How it Works
 
