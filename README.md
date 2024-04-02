@@ -16,12 +16,12 @@ The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any h
 
 ## Usage
 
-Due to an different (improved!) alorithm in 0.6.0, `BloomFilter`s have incompatible serialization/deserialization with 0.5.x! 
+Due to a different (improved!) algorithm in 0.6.1, `BloomFilter`s have incompatible serialization/deserialization with 0.5.x! 
 
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.6.0"
+fastbloom = "0.6.1"
 ```
 Basic usage:
 ```rust
