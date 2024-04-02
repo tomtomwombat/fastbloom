@@ -148,11 +148,10 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         let block_size = BLOCK_SIZE_BITS as f64;
 
         // `items_per_block` is an average. When block sizes decrease
-        // the variance in the actual item per block decrease,
+        // the variance in the actual item per block increase,
         // meaning we are more likely to have a "crowded" block, with
         // way too many bits set. So we decrease the max hashes
         // to decrease this "crowding" effect.
-        // TODO: a more precise formula for this
         let min_hashes_mult = (BLOCK_SIZE_BITS as f64) / (512f64);
 
         let max_hashes = block_size / 64.0f64 * sparse_hash::hashes_for_bits(32) * min_hashes_mult;
@@ -194,6 +193,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
+            // Set bits the traditional way--1 bit per composed hash
             let index = block_index(self.num_blocks(), h1);
             let block = &mut self.bits.get_block_mut(index);
             previously_contained &= BlockedBitVec::<BLOCK_SIZE_BITS>::set_for_block(
@@ -202,6 +202,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
             );
         }
         if let Some(num_rounds) = self.num_rounds {
+            // Set many bits in parallel using a sparse hash
             let index = block_index(self.num_blocks(), h1);
             match BLOCK_SIZE_BITS {
                 128 => {
@@ -259,10 +260,12 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     pub fn contains(&self, val: &(impl Hash + ?Sized)) -> bool {
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
         (0..self.num_hashes).into_iter().all(|_| {
+            // Set bits the traditional way--1 bit per composed hash
             let index = block_index(self.num_blocks(), h1);
             let block = &self.bits.get_block(index);
             BlockedBitVec::<BLOCK_SIZE_BITS>::check_for_block(block, Self::bit_index(&mut h1, h2))
         }) && (if let Some(num_rounds) = self.num_rounds {
+            // Set many bits in parallel using a sparse hash
             let index = block_index(self.num_blocks(), h1);
             let block = &self.bits.get_block(index);
             match BLOCK_SIZE_BITS {
@@ -497,7 +500,7 @@ mod tests {
 
     #[test]
     fn target_fp_is_accurate() {
-        fn target_fp_is_accurate_<const N: usize>() {
+        fn target_fp_is_accurate_<const N: usize>(thresh: f64) {
             for mag in 1..=5 {
                 let fp = 1.0f64 / 10u64.pow(mag) as f64;
                 for num_items_mag in 1..6 {
@@ -511,17 +514,17 @@ mod tests {
                     let anti_vals = random_numbers(100_000, 3);
                     let sample_fp = false_pos_rate_with_vals(&filter, &control, &anti_vals);
                     if sample_fp > 0.0 {
-                        let score = fp / sample_fp;
-                        // sample_fp can be at most 100 times greater than score
-                        assert!(score >= 0.01, "score {score:}, block_size: {N:}, size: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
+                        let score = sample_fp / fp;
+                        // sample_fp can be at most X times greater than requested fp
+                        assert!(score <= thresh, "score {score:}, block_size: {N:}, size: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
                     }
                 }
             }
         }
-        target_fp_is_accurate_::<512>();
-        target_fp_is_accurate_::<256>();
-        target_fp_is_accurate_::<128>();
-        target_fp_is_accurate_::<64>();
+        target_fp_is_accurate_::<512>(5.0);
+        target_fp_is_accurate_::<256>(5.0);
+        target_fp_is_accurate_::<128>(10.0);
+        target_fp_is_accurate_::<64>(75.0);
     }
 
     #[test]

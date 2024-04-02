@@ -238,12 +238,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
     /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(500);
     /// ```
     pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let num_bits = optimal_size(expected_num_items as f64, self.desired_fp_rate)
-            * match BLOCK_SIZE_BITS {
-                64 => 3,
-                128 => 2,
-                _ => 1,
-            };
+        let num_bits = optimal_size(expected_num_items as f64, self.desired_fp_rate);
         BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
             .hasher(self.hasher)
             .expected_items(expected_num_items)
