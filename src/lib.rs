@@ -432,41 +432,17 @@ mod tests {
         repeat(()).take(num).map(|_| rng.gen()).collect()
     }
 
-    trait Container {
-        fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
-            num_bits: usize,
-            items: I,
-        ) -> Self;
-        fn check<X: Hash>(&self, s: X) -> bool;
-        fn num_hashes(&self) -> usize;
-        fn block_counts(&self) -> Vec<u64>;
-    }
-    impl<const N: usize, H: Seeded> Container for BloomFilter<N, H> {
-        fn new<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
-            num_bits: usize,
-            items: I,
-        ) -> Self {
-            BloomFilter::new_builder::<N>(num_bits)
-                .hasher(H::seeded(&[42; 16]))
-                .items(items)
-        }
-        fn check<X: Hash>(&self, s: X) -> bool {
-            self.contains(&s)
-        }
-        fn num_hashes(&self) -> usize {
-            self.num_hashes() as usize
-        }
-        fn block_counts(&self) -> Vec<u64> {
-            (0..self.num_blocks())
-                .map(|i| {
-                    self.bits
-                        .get_block(i)
-                        .iter()
-                        .map(|x| x.count_ones() as u64)
-                        .sum()
-                })
-                .collect()
-        }
+    fn block_counts<const N: usize>(filter: &BloomFilter<N>) -> Vec<u64> {
+        (0..filter.num_blocks())
+            .map(|i| {
+                filter
+                    .bits
+                    .get_block(i)
+                    .iter()
+                    .map(|x| x.count_ones() as u64)
+                    .sum()
+            })
+            .collect()
     }
 
     #[test]
@@ -542,7 +518,7 @@ mod tests {
                     assert!(filter.num_hashes() > 0);
                     filter.clear();
                     assert!(sample_vals.iter().all(|x| !filter.contains(x)));
-                    assert_eq!(filter.block_counts().iter().sum::<u64>(), 0);
+                    assert_eq!(block_counts(&filter).iter().sum::<u64>(), 0);
                 }
             }
         }
@@ -632,8 +608,13 @@ mod tests {
         }
     }
 
-    fn false_pos_rate_with_vals<'a, X: Hash + Eq + PartialEq + 'a>(
-        filter: &impl Container,
+    fn false_pos_rate_with_vals<
+        'a,
+        const N: usize,
+        H: BuildHasher,
+        X: Hash + Eq + PartialEq + 'a,
+    >(
+        filter: &BloomFilter<N, H>,
         control: &HashSet<X>,
         anti_vals: impl IntoIterator<Item = &'a X>,
     ) -> f64 {
@@ -642,7 +623,7 @@ mod tests {
         for x in anti_vals.into_iter() {
             if !control.contains(x) {
                 total += 1;
-                false_positives += filter.check(x) as usize;
+                false_positives += filter.contains(x) as usize;
             }
         }
         (false_positives as f64) / (total as f64)
@@ -650,7 +631,7 @@ mod tests {
 
     #[test]
     fn false_pos_decrease_with_size() {
-        fn false_pos_decrease_with_size_<T: Container>() {
+        fn false_pos_decrease_with_size_<const N: usize>() {
             let anti_vals = random_numbers(1000, 2);
             for mag in 5..6 {
                 let size = 10usize.pow(mag);
@@ -659,7 +640,7 @@ mod tests {
                 for num_bits_mag in 9..22 {
                     let num_bits = 1 << num_bits_mag;
                     let sample_vals = random_numbers(size, 1);
-                    let filter: T = Container::new(num_bits, sample_vals.iter());
+                    let filter = BloomFilter::new_builder::<N>(num_bits).items(sample_vals.iter());
                     let control: HashSet<u64> = sample_vals.into_iter().collect();
                     let fp = false_pos_rate_with_vals(&filter, &control, &anti_vals);
 
@@ -678,10 +659,10 @@ mod tests {
                 }
             }
         }
-        false_pos_decrease_with_size_::<BloomFilter<512>>();
-        false_pos_decrease_with_size_::<BloomFilter<256>>();
-        false_pos_decrease_with_size_::<BloomFilter<128>>();
-        false_pos_decrease_with_size_::<BloomFilter<64>>();
+        false_pos_decrease_with_size_::<512>();
+        false_pos_decrease_with_size_::<256>();
+        false_pos_decrease_with_size_::<128>();
+        false_pos_decrease_with_size_::<64>();
     }
 
     fn assert_even_distribution(distr: &[u64], err: f64) {
@@ -696,14 +677,14 @@ mod tests {
 
     #[test]
     fn block_distribution() {
-        fn block_distribution_<T: Container>() {
-            let filter: T = Container::new(1000, random_numbers(1000, 1));
-            assert_even_distribution(&filter.block_counts(), 0.4);
+        fn block_distribution_<const N: usize>() {
+            let filter = BloomFilter::new_builder::<N>(1000).items(random_numbers(1000, 1));
+            assert_even_distribution(&block_counts(&filter), 0.4);
         }
-        block_distribution_::<BloomFilter<512>>();
-        block_distribution_::<BloomFilter<256>>();
-        block_distribution_::<BloomFilter<128>>();
-        block_distribution_::<BloomFilter<64>>();
+        block_distribution_::<512>();
+        block_distribution_::<256>();
+        block_distribution_::<128>();
+        block_distribution_::<64>();
     }
     #[test]
     fn block_hash_distribution() {

@@ -12,9 +12,11 @@ The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any h
 
 ## Overview
 
-`fastbloom` is an accurate SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
+`fastbloom` is a SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
 
 ## Usage
+
+Due to an different (improved!) alorithm in 0.6.0, `BloomFilter`s have incompatible serialization/deserialization with 0.5.x! 
 
 ```toml
 # Cargo.toml
@@ -143,7 +145,7 @@ Instead of deriving a single bit position per hash, a hash with ~N 1 bits set ca
 
 For a Bloom filter with a bit vector of size 64 and desired hashes 24, 24 (potentially overlapping) positions in the bit vector are set or checked for each item on insertion or membership check respectively.
 
-Other Bloom filters derive 24 positions based on 24 hashes of the item:
+Other traditional Bloom filters derive 24 positions based on 24 hashes of the item:
 - `hash0(item) % 64`
 - `hash1(item) % 64`
 - ...
@@ -158,7 +160,7 @@ Note:
 - Given 64 bits, and 24 hashes, a bit has probability (63/64)^24 to NOT be set, i.e. 0, after 24 hashes. The expected number of bits to be set for an item is 64 - (64 * (63/64)^24) ~= 20.
 - A 64 bit `hash0(item)` provides us with roughly 32 set bits with a binomial distribution. `hash0(item) & hash1(item)` gives us ~16 set bits, `hash0(item) | hash1(item)` gives us ~48 set bits, etc.
 
-In reality, the Bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on using SIMD intrinsics. The number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the usual way to account for any rounding errors.
+In reality, the Bloom filter may have more than 64 bits of storage. In that case, many underlying `u64`s in the block are operated on using SIMD intrinsics. The number of hashes is adjusted to be the number of hashes per `u64` in the block. Additionally, some bits may be set in the traditional way, across the entire bit vector, to account for any truncating errors from the sparse hash. This also reduces the false positive rate and boosts non-member check speed.
 
 ## Available Features
 
