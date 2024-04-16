@@ -130,7 +130,13 @@ impl BloomFilter {
     /// # Examples
     /// ```
     /// use fastbloom::BloomFilter;
-    /// let bloom = BloomFilter::from_vec(vec![0x517cc1b727220a95; 8]).hashes(4);
+    ///
+    /// let orig = BloomFilter::with_false_pos(0.001).seed(&42).items([1, 2]);
+    /// let num_hashes = orig.num_hashes();
+    /// let new = BloomFilter::from_vec(orig.as_slice().to_vec()).seed(&42).hashes(num_hashes);
+    ///
+    /// assert!(new.contains(&1));
+    /// assert!(new.contains(&2));
     /// ```
     pub fn from_vec(bit_vec: Vec<u64>) -> BuilderWithBits<512> {
         BloomFilter::new_from_vec::<512>(bit_vec)
@@ -865,5 +871,22 @@ mod tests {
             BloomFilter::from_vec(vec![42; 42]).block_size_64(),
             BloomFilter::new_from_vec::<64>(vec![42; 42]),
         );
+    }
+
+    #[test]
+    fn test_rebuilt_from_vec() {
+        for num in [1, 10, 1000, 100_000] {
+            for fp in [0.1, 0.01, 0.0001, 0.0000001] {
+                let items = random_numbers(num, 42);
+                let b = BloomFilter::with_false_pos(fp)
+                    .seed(&42)
+                    .items(items.iter());
+                let orig_hashes = b.num_hashes();
+                let new = BloomFilter::from_vec(b.as_slice().to_vec())
+                    .seed(&42)
+                    .hashes(orig_hashes);
+                assert!(items.iter().all(|x| new.contains(x)));
+            }
+        }
     }
 }

@@ -93,6 +93,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     /// - the min number of rounds is 1, generating around ~32 bits, which is the max entropy in the u64.
     /// - the max number of rounds is ~4. That produces a sparse hash of ~4 bits set (1/2^4), at which point we may as well calculate 4 bit indexes normally.
     fn hashes_f(self, total_num_hashes: f64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+        let total_num_hashes = total_num_hashes.floor();
         let (num_hashes, num_rounds) =
             sparse_hash::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
 
