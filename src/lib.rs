@@ -400,7 +400,7 @@ pub(crate) fn get_orginal_hashes(
 /// <https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/>
 #[inline]
 pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
-    (((hash >> 32) as usize * num_blocks) >> 32) as usize
+    (((hash >> 32) * num_blocks as u64) >> 32) as usize
 }
 
 #[cfg(test)]
