@@ -1,6 +1,6 @@
 [package]
 name = "fastbloom"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 authors = ["tomtomwombat"]
 description = "The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any hasher."
