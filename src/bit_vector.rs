@@ -1,4 +1,6 @@
 use std::ops::Range;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
@@ -20,6 +22,8 @@ const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 /// Indexing a block is also efficient, since it can be done with bit operators because
 /// the size of a block is a power of 2.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+
 pub struct BlockedBitVec<const BLOCK_SIZE_BITS: usize> {
     bits: Vec<u64>,
 }

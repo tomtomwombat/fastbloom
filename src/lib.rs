@@ -9,6 +9,8 @@ pub use builder::{BuilderWithBits, BuilderWithFalsePositiveRate};
 mod bit_vector;
 use bit_vector::BlockedBitVec;
 mod sparse_hash;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use sparse_hash::SparseHash;
 use wide::{u64x2, u64x4};
 
@@ -50,6 +52,7 @@ use wide::{u64x2, u64x4};
 ///     .items(["42", "🦀"]);
 /// ```
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BloomFilter<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
     bits: BlockedBitVec<BLOCK_SIZE_BITS>,
     /// The total target hashes per item that is specified by user or optimized to maximize accuracy
