@@ -2,6 +2,7 @@ use siphasher::sip::SipHasher13;
 use std::hash::{BuildHasher, Hasher};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CloneBuildHasher<H: Hasher + Clone> {
     hasher: H,
 }
@@ -36,6 +37,7 @@ impl DefaultHasher {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RandomDefaultHasher(SipHasher13);
 
 impl RandomDefaultHasher {

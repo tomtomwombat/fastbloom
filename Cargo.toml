@@ -26,7 +26,7 @@ getrandom = { version = "0.2", features = ["js"] }
 getrandom = "0.2"
 rand = { version = "0.8.5", optional = true }
 serde = { version = "1.0.203", features = ["derive"], optional = true }
-siphasher = "1.0.0"
+siphasher = { version = "1.0.0", features = ["serde"] }
 wide = "0.7.15"
 
 [dev-dependencies]
