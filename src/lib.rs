@@ -144,9 +144,16 @@ impl BloomFilter {
     }
 }
 
+const fn validate_block_size(size: usize) -> usize {
+    match size {
+        64 | 128 | 256 | 512 => size,
+        _ => panic!("The only BLOCK_SIZE's allowed are 64, 128, 256, and 512."),
+    }
+}
+
 impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, S> {
     /// Used to grab the last N bits from a hash.
-    const BIT_INDEX_MASK: u64 = (BLOCK_SIZE_BITS - 1) as u64;
+    const BIT_INDEX_MASK: u64 = (validate_block_size(BLOCK_SIZE_BITS) - 1) as u64;
 
     /// The optimal number of hashes to perform for an item given the expected number of items to be contained in one block.
     /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>

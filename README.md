@@ -166,6 +166,8 @@ In reality, the Bloom filter may have more than 64 bits of storage. In that case
 
 - **`rand`** - Enabled by default, this has the `DefaultHasher` source its random state using `thread_rng()` instead of hardware sources. Getting entropy from a user-space source is considerably faster, but requires additional dependencies to achieve this. Disabling this feature by using `default-features = false` makes `DefaultHasher` source its entropy using `getrandom`, which will have a much simpler code footprint at the expense of speed.
 
+- **`serde`** - `BloomFilter`s implement `Serialize` and `Deserialize` when possible.
+
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
 - [Bloom Filter - Brilliant](https://brilliant.org/wiki/bloom-filter/)
