@@ -19,9 +19,6 @@ default = ["rand"]
 rand = ["dep:rand"]
 serde = ["dep:serde", "siphasher/serde_std"]
 
-[target.'cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-
 [dependencies]
 getrandom = "0.2"
 rand = { version = "0.8.5", optional = true }
