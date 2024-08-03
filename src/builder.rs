@@ -1,5 +1,6 @@
 use crate::{BloomFilter, BuildHasher, DefaultHasher};
 use std::hash::Hash;
+use std::f32::consts::{E, LN_2};
 
 use crate::sparse_hash;
 
@@ -150,8 +151,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
 }
 
 fn optimal_size(items_count: f64, fp_p: f64) -> usize {
-    let log2 = f64::ln(2.0f64);
-    let log2_2 = log2 * log2;
+    let log2_2 = LN_2 * LN_2;
     let result = 8 * ((items_count) * f64::ln(fp_p) / (-8.0 * log2_2)).ceil() as usize;
     std::cmp::max(result, 512)
 }
