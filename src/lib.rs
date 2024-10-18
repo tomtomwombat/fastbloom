@@ -68,7 +68,9 @@ impl BloomFilter {
         num_bits: usize,
     ) -> BuilderWithBits<BLOCK_SIZE_BITS> {
         assert!(num_bits > 0);
-        let num_u64s = num_bits.div_ceil(64);
+        // Only available in rust 1.73+
+        // let num_u64s = num_bits.div_ceil(64);
+        let num_u64s = (num_bits + 64 - 1) / 64;
         BuilderWithBits::<BLOCK_SIZE_BITS> {
             data: vec![0; num_u64s],
             hasher: Default::default(),
