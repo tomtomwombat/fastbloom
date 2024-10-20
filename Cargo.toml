@@ -2,6 +2,7 @@
 name = "fastbloom"
 version = "0.7.1"
 edition = "2021"
+rust-version = "1.70.0"
 authors = ["tomtomwombat"]
 description = "The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any hasher."
 license = "MIT OR Apache-2.0"
@@ -31,5 +32,5 @@ wide = "0.7.15"
 
 [dev-dependencies]
 rand = "0.8.5"
-rand_regex = "0.16.0"
+rand_regex = "0.15.1"
 ahash = "0.8.6"
