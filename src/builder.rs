@@ -1,6 +1,6 @@
 use crate::{BloomFilter, BuildHasher, DefaultHasher};
+use std::f64::consts::LN_2;
 use std::hash::Hash;
-use std::f32::consts::{E, LN_2};
 
 use crate::sparse_hash;
 
