@@ -61,7 +61,7 @@ impl Default for RandomDefaultHasher {
         {
             use rand::RngCore;
 
-            rand::thread_rng().fill_bytes(&mut seed);
+            rand::rng().fill_bytes(&mut seed);
         }
 
         Self::seeded(&seed)

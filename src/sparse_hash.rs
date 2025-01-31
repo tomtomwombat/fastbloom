@@ -340,8 +340,8 @@ mod test {
             let trials = 10_000;
             let mut total_bits = 0;
             for _ in 0..trials {
-                let mut h1 = rng.gen();
-                let h2 = rng.gen();
+                let mut h1 = rng.random();
+                let h2 = rng.random();
                 let h = u64::sparse_hash(&mut h1, h2, target_bits);
                 total_bits += h.count_ones();
             }
