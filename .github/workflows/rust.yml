@@ -27,12 +27,12 @@ jobs:
       run: cargo test --doc --verbose
       env:
         CARGO_INCREMENTAL: '0'
-        RUSTDOCFLAGS: '-Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort'
+        RUSTDOCFLAGS: '-Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
     - name: Run tests with coverage
       run: cargo llvm-cov --verbose --lcov --output-path lcov.info
       env:
         CARGO_INCREMENTAL: '0'
-        RUSTFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort'
+        RUSTFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
     - name: Codecov
       uses: codecov/codecov-action@v4-beta
       env:
