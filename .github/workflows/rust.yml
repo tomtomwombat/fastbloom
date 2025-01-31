@@ -27,8 +27,8 @@ jobs:
       run: cargo llvm-cov --doctests --verbose --lcov --output-path lcov.info
       env:
         CARGO_INCREMENTAL: '0'
-        RUSTFLAGS: '-Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-        RUSTDOCFLAGS: '-Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+        RUSTFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+        RUSTDOCFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zunstable-options --persist-doctests target/debug/doctestbins'
     - name: Codecov
       uses: codecov/codecov-action@v4-beta
       env:
