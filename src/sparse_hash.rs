@@ -84,13 +84,12 @@ impl SparseHash for u64x4 {
     }
     #[inline]
     fn matches(data: &[u64], x: Self) -> bool {
-        let t = unsafe { std::mem::transmute::<&[u64], &[Self]>(data) };
-        (t[0] & x) == x
+        Self::from(&data[..4]) & x == x
     }
     #[inline]
     fn set(data: &mut [u64], x: Self) {
-        let t = unsafe { std::mem::transmute::<&mut [u64], &mut [Self]>(data) };
-        t[0] |= x;
+        let update = Self::from(&data[..4]) | x;
+        data[..4].copy_from_slice(update.as_array_ref())
     }
 }
 
@@ -105,13 +104,12 @@ impl SparseHash for u64x2 {
     }
     #[inline]
     fn matches(data: &[u64], x: Self) -> bool {
-        let t = unsafe { std::mem::transmute::<&[u64], &[Self]>(data) };
-        (t[0] & x) == x
+        Self::new(data[..2].try_into().unwrap()) & x == x
     }
     #[inline]
     fn set(data: &mut [u64], x: Self) {
-        let t = unsafe { std::mem::transmute::<&mut [u64], &mut [Self]>(data) };
-        t[0] |= x;
+        let update = Self::new(data[..2].try_into().unwrap()) | x;
+        data[..2].copy_from_slice(update.as_array_ref())
     }
 }
 
