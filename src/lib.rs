@@ -174,12 +174,10 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
         let hashes_per_block = block_size / items_per_block * f64::ln(2.0f64);
         if hashes_per_block > max_hashes {
             max_hashes
+        } else if hashes_per_block < 1.0 {
+            1.0
         } else {
-            if hashes_per_block < 1.0 {
-                1.0
-            } else {
-                hashes_per_block
-            }
+            hashes_per_block
         }
     }
 
@@ -275,7 +273,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     #[inline]
     pub fn contains(&self, val: &(impl Hash + ?Sized)) -> bool {
         let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
-        (0..self.num_hashes).into_iter().all(|_| {
+        (0..self.num_hashes).all(|_| {
             // Set bits the traditional way--1 bit per composed hash
             let index = block_index(self.num_blocks(), h1);
             let block = &self.bits.get_block(index);
@@ -445,7 +443,7 @@ mod tests {
 
     fn random_numbers(num: usize, seed: u64) -> Vec<u64> {
         let mut rng = StdRng::seed_from_u64(seed);
-        repeat(()).take(num).map(|_| rng.gen()).collect()
+        repeat(()).take(num).map(|_| rng.random()).collect()
     }
 
     fn block_counts<const N: usize>(filter: &BloomFilter<N>) -> Vec<u64> {
@@ -571,7 +569,7 @@ mod tests {
         fn test_optimal_hashes_is_optimal_<const BLOCK_SIZE_BITS: usize, H: Seeded>() {
             let sizes = [1000, 2000, 5000, 6000, 8000, 10000];
             let mut wins = 0;
-            for num_items in sizes.clone() {
+            for num_items in sizes {
                 let sample_vals = random_numbers(num_items, 42);
                 let num_bits = 65000 * 8;
                 let filter = BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
@@ -723,8 +721,8 @@ mod tests {
     fn test_seeded_hash_from_hashes_depth() {
         for size in [1, 10, 100, 1000] {
             let mut rng = StdRng::seed_from_u64(524323);
-            let mut h1 = (&mut rng).gen_range(0..u64::MAX);
-            let h2 = (&mut rng).gen_range(0..u64::MAX);
+            let mut h1 = rng.random_range(0..u64::MAX);
+            let h2 = rng.random_range(0..u64::MAX);
             let mut seeded_hash_counts = vec![0; size];
             for _ in 0..(size * 10_000) {
                 let hi = u64::next_hash(&mut h1, h2);
@@ -762,13 +760,13 @@ mod tests {
                 H: BuildHasher + Seeded,
                 F: FnMut(usize) -> usize,
             >(
-                mut f: F,
+                f: F,
                 filter: &BloomFilter<N, H>,
                 thresh_pct: f64,
             ) {
                 let num = 2000 * N;
                 let mut counts = vec![0; N * filter.num_blocks()];
-                for val in (0..num).map(|i| f(i)) {
+                for val in (0..num).map(f) {
                     let [mut h1, h2] = get_orginal_hashes(&filter.hasher, &val);
                     let block_index = block_index(filter.num_blocks(), h1);
                     for _ in 0..filter.num_hashes() {
@@ -785,7 +783,7 @@ mod tests {
                     .hashes(num_hashes);
                 let mut rng = StdRng::seed_from_u64(42);
                 test_with_distr_fn(
-                    |_| (&mut rng).gen_range(0..usize::MAX),
+                    |_| rng.random_range(0..usize::MAX),
                     &clone_me,
                     thresh_pct,
                 );
@@ -797,7 +795,7 @@ mod tests {
                     thresh_pct,
                 );
                 test_with_distr_fn(
-                    |x| x * clone_me.num_blocks() as usize,
+                    |x| x * clone_me.num_blocks(),
                     &clone_me,
                     thresh_pct,
                 );

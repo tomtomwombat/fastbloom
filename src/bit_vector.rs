@@ -132,11 +132,11 @@ mod tests {
     fn test_only_random_inserts_are_contained() {
         let mut vec = BlockedBitVec::<64>::from(vec![0; 80]);
         let mut control = HashSet::new();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for _ in 0..100000 {
-            let block_index = rng.gen_range(0..vec.num_blocks());
-            let bit_index = rng.gen_range(0..64);
+            let block_index = rng.random_range(0..vec.num_blocks());
+            let bit_index = rng.random_range(0..64);
 
             let block = vec.get_block(block_index);
 

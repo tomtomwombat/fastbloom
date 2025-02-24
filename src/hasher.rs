@@ -54,14 +54,12 @@ impl Default for RandomDefaultHasher {
 
         #[cfg(not(feature = "rand"))]
         {
-            getrandom::getrandom(&mut seed)
-                .expect("Unable to obtain entropy from OS/Hardware sources");
+            getrandom::fill(&mut seed).expect("Unable to obtain entropy from OS/Hardware sources");
         }
         #[cfg(feature = "rand")]
         {
             use rand::RngCore;
-
-            rand::thread_rng().fill_bytes(&mut seed);
+            rand::rng().fill_bytes(&mut seed);
         }
 
         Self::seeded(&seed)
