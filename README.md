@@ -67,13 +67,18 @@ fastbloom is blazingly fast because it uses L1 cache friendly blocks, efficientl
 fastbloom is a partial blocked Bloom filter. Blocked Bloom filters partition their underlying bit array into sub-array "blocks". Bits set and checked from the item's hash are constrained to a single block instead of the entire bit array. This allows for better cache-efficiency and the opportunity to leverage SIMD and [SWAR](https://en.wikipedia.org/wiki/SWAR) operations when generating bits from an item’s hash. [See more on blocked bloom filters.](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf) Some of fastbloom's hash indexes span the entire bit array while others are confined to a single block.
 
 ## Speed
-- "fastbloom" is default (block size of 512 bits)
+Below is a comparison of runtime speed with other Bloom filter crates:
+- "fastbloom" with default block size of 512 bits
 - "fastbloom - 64" with block size of 64 bits
 
 ![speed_non_member](https://github.com/user-attachments/assets/c0932c58-9b4f-4305-9115-99692448b6f6)
 ![speed_member](https://github.com/user-attachments/assets/d7e6f69c-9b5f-44c2-9bb3-486e778e451e)
-
-[Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
+> Hashers used:
+> - xxhash: sbbf, fastbloom-rs
+> - Sip1-3: bloom, bloomfilter, probabilistic-collections
+> - ahash: fastbloom
+> 
+> [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
 ## Accuracy
 
