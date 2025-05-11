@@ -18,16 +18,15 @@ maintenance = { status = "actively-developed" }
 [features]
 default = ["rand"]
 rand = ["dep:rand"]
-serde = ["dep:serde", "siphasher/serde_std"]
+serde = ["dep:serde"]
 
 [dependencies]
+ahash = "0.8.12"
 getrandom = "0.3"
 rand = { version = "0.9.0", optional = true }
 serde = { version = "1.0.203", features = ["derive"], optional = true }
-siphasher = "1.0.0"
 wide = "0.7.15"
 
 [dev-dependencies]
 rand = "0.9"
-rand_regex = "0.18"
-ahash = "0.8.6"
+serde_json = "1.0"

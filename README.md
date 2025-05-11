@@ -12,7 +12,7 @@ The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any h
 
 ## Overview
 
-`fastbloom` is a SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
+`fastbloom` is a SIMD accelerated Bloom filter implemented in Rust. `fastbloom`'s default hasher is ahash using randomized keys but can be seeded or configured to use any hasher. `fastbloom` is 50-10000% faster than existing Bloom filter implementations.
 
 ## Usage
 

@@ -1,6 +1,8 @@
 use std::ops::{AddAssign, BitAndAssign, BitOrAssign};
 use wide::{u64x2, u64x4};
 
+const MIN_TARGET_BITS: u64 = 8;
+
 #[inline]
 pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
     f64::ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64))
@@ -289,25 +291,13 @@ pub(crate) trait SparseHash: Sized + AddAssign + Copy + BitAndAssign + BitOrAssi
     }
 }
 
-fn min_target_bits(block_size: usize) -> u64 {
-    // We will not accept rounds too low the variance is too high, and bits may be 0, which is bad for false positives.
-    // TODO: a more precise formula for this
-    match block_size {
-        512 => 8,
-        _ => 16,
-    }
-}
-
-pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64, Option<u64>) {
+pub(crate) fn optimize_hashing(mut total_num_hashes: f64, block_size: usize) -> (u64, Option<u64>) {
+    // - 1 to reserve at least 1 normal hash across the bit vector: better accuracry and non-member check speed
+    total_num_hashes -= 1.0;
     let num_u64s_per_block = (block_size as u64 / 64) as f64;
-    let mut num_hashes = if block_size == 512 {
-        total_num_hashes.round() as u64
-    } else {
-        total_num_hashes.floor() as u64
-    };
+    let mut num_hashes = total_num_hashes.floor() as u64;
     let mut num_rounds = None;
-    let min_target_bits = min_target_bits(block_size);
-    for target_bits_per_u64_per_item in min_target_bits..=32 {
+    for target_bits_per_u64_per_item in MIN_TARGET_BITS..=32 {
         let hashes_covered = hashes_for_bits(target_bits_per_u64_per_item);
         let remaining = (total_num_hashes - (hashes_covered * num_u64s_per_block)).round();
         if remaining < 0.0 {
@@ -321,7 +311,8 @@ pub(crate) fn optimize_hashing(total_num_hashes: f64, block_size: usize) -> (u64
             num_hashes = hashing_work;
         }
     }
-    (num_hashes, num_rounds)
+    // + 1 to add the subtracted hash back
+    (num_hashes + 1, num_rounds)
 }
 
 #[cfg(test)]
@@ -334,7 +325,7 @@ mod test {
     #[test]
     fn test_num_bits() {
         let mut rng = StdRng::seed_from_u64(42);
-        for target_bits in min_target_bits(512)..=32 {
+        for target_bits in MIN_TARGET_BITS..=32 {
             let trials = 10_000;
             let mut total_bits = 0;
             for _ in 0..trials {
@@ -372,7 +363,7 @@ mod test {
     #[test]
     fn test_work_for_unknown_bits() {
         for i in 33..=1000 {
-            for j in min_target_bits(512)..=32 {
+            for j in MIN_TARGET_BITS..=32 {
                 assert!(work(j) < work(i));
             }
         }
