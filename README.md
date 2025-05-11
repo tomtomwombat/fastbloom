@@ -16,12 +16,12 @@ fastbloom is a SIMD accelerated Bloom filter implemented in Rust. fastbloom's de
 
 ## Usage
 
-Due to a different (improved!) algorithm in 0.9.x, `BloomFilter`s have incompatible serialization/deserialization with 0.8.x! 
+Due to a different (improved!) algorithm in 0.10.x, `BloomFilter`s have incompatible serialization/deserialization with 0.9.x! 
 
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.9.0"
+fastbloom = "0.10.0"
 ```
 Basic usage:
 ```rust
