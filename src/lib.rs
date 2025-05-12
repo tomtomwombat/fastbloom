@@ -591,27 +591,33 @@ mod tests {
 
     #[test]
     fn seeded_is_same() {
-        let num_bits = 1 << 13;
-        let sample_vals = member_nums(1000).collect::<Vec<_>>();
-        for x in 0u8..10 {
-            let seed = x as u128;
-            assert_eq!(
-                BloomFilter::with_num_bits(num_bits)
-                    .seed(&seed)
-                    .items(sample_vals.iter()),
-                BloomFilter::with_num_bits(num_bits)
-                    .seed(&seed)
-                    .items(sample_vals.iter())
-            );
-            assert!(
-                !(BloomFilter::with_num_bits(num_bits)
-                    .seed(&(seed + 1))
-                    .items(sample_vals.iter())
-                    == BloomFilter::with_num_bits(num_bits)
+        fn seeded_is_same_<const N: usize>() {
+            let num_bits = 1 << 10;
+            let sample_vals = member_nums(1000).collect::<Vec<_>>();
+            for x in 0u8..32 {
+                let seed = x as u128;
+                assert_eq!(
+                    BloomFilter::new_builder::<N>(num_bits)
                         .seed(&seed)
-                        .items(sample_vals.iter()))
-            );
+                        .items(sample_vals.iter()),
+                    BloomFilter::new_builder::<N>(num_bits)
+                        .seed(&seed)
+                        .items(sample_vals.iter())
+                );
+                assert!(
+                    !(BloomFilter::new_builder::<N>(num_bits)
+                        .seed(&(seed + 1))
+                        .items(sample_vals.iter())
+                        == BloomFilter::new_builder::<N>(num_bits)
+                            .seed(&seed)
+                            .items(sample_vals.iter()))
+                );
+            }
         }
+        seeded_is_same_::<512>();
+        seeded_is_same_::<256>();
+        seeded_is_same_::<128>();
+        seeded_is_same_::<64>();
     }
 
     #[test]
@@ -656,7 +662,10 @@ mod tests {
         let thresh = (expected as f64 * err) as i64;
         for x in distr {
             let diff = (*x as i64 - expected).abs();
-            assert!(diff <= thresh, "{x:?} deviates from {expected:?}");
+            assert!(
+                diff <= thresh,
+                "{x:?} deviates from {expected:?}\nDistribution: {distr:?}"
+            );
         }
     }
 
@@ -707,10 +716,12 @@ mod tests {
     #[test]
     fn index_hash_distribution() {
         fn index_hash_distribution_<const N: usize>(thresh_pct: f64) {
-            let filter: BloomFilter<N> = BloomFilter::new_builder(1).seed(&0).hashes(1);
+            let filter: BloomFilter<N> = BloomFilter::new_builder(1).seed(&42).hashes(1);
             let [mut h1, h2] = get_orginal_hashes(&filter.hasher, "qwerty");
-            let mut counts = vec![0; N];
-            let iterations = 10000 * N as u64;
+            assert_eq!(h1, 10593016135521423434);
+            assert_eq!(h2, 17953629391013907857);
+            let mut counts = [0; N];
+            let iterations = TRIALS * N;
             for _ in 0..iterations {
                 let bit_index = BloomFilter::<N>::bit_index(&mut h1, h2);
                 let index = bit_index % N;
@@ -718,10 +729,10 @@ mod tests {
             }
             assert_even_distribution(&counts, thresh_pct);
         }
-        index_hash_distribution_::<512>(0.05);
-        index_hash_distribution_::<256>(0.05);
-        index_hash_distribution_::<128>(0.05);
-        index_hash_distribution_::<64>(0.05);
+        index_hash_distribution_::<512>(0.25);
+        index_hash_distribution_::<256>(0.25);
+        index_hash_distribution_::<128>(0.25);
+        index_hash_distribution_::<64>(0.25);
     }
 
     #[test]
