@@ -16,12 +16,12 @@ fastbloom is a SIMD accelerated Bloom filter implemented in Rust. fastbloom's de
 
 ## Usage
 
-Due to a different (improved!) algorithm in 0.10.x, `BloomFilter`s have incompatible serialization/deserialization with 0.9.x! 
+Due to a different (improved!) algorithm in 0.11.x, `BloomFilter`s have incompatible serialization/deserialization with 0.10.x!
 
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.10.0"
+fastbloom = "0.11.0"
 ```
 Basic usage:
 ```rust
@@ -68,8 +68,8 @@ fastbloom is a partial blocked Bloom filter. Blocked Bloom filters partition the
 
 ## Speed
 Below is a comparison of runtime speed with other Bloom filter crates:
-- "fastbloom" with default block size of 512 bits
-- "fastbloom - 64" with block size of 64 bits
+- "fastbloom" with default block size of 512 bits and using ahash
+- "fastbloom - 64" with block size of 64 bits and using ahash
 
 ![speed_non_member](https://github.com/user-attachments/assets/c0932c58-9b4f-4305-9115-99692448b6f6)
 ![speed_member](https://github.com/user-attachments/assets/d7e6f69c-9b5f-44c2-9bb3-486e778e451e)
@@ -105,7 +105,7 @@ let filter = BloomFilter::with_num_bits(1024).block_size_128().expected_items(2)
 ![b_member](https://github.com/user-attachments/assets/9753dcf4-38a7-4af3-b2a7-b4627eaf07ff)
 ![b_fp_micro](https://github.com/user-attachments/assets/5a91e435-1a2b-4466-a6c7-d9b2df9c3463)
 ![b_fp_macro](https://github.com/user-attachments/assets/b5d618d2-d243-4823-bd91-4694456dbaca)
-
+> Bloom filters configured using ahash
 
 ## How it Works
 
