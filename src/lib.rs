@@ -198,7 +198,20 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// ```
     #[inline]
     pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
-        let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
+        let source_hash = self.source_hash(val);
+        self.insert_hash(source_hash)
+    }
+
+    /// Inserts the hash of an element into the Bloom filter.
+    /// That is the element is pre-hashed and all subsequent hashes are derived from this "source" hash.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
+    /// `false` otherwise.
+    #[inline]
+    pub fn insert_hash(&mut self, hash: u64) -> bool {
+        let [mut h1, h2] = starting_hashes(hash);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
             // Set bits the traditional way--1 bit per composed hash
@@ -266,7 +279,19 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// ```
     #[inline]
     pub fn contains(&self, val: &(impl Hash + ?Sized)) -> bool {
-        let [mut h1, h2] = get_orginal_hashes(&self.hasher, val);
+        let source_hash = self.source_hash(val);
+        self.contains_hash(source_hash)
+    }
+
+    /// Checks if the hash of an element is possibly in the Bloom filter.
+    /// That is the element is pre-hashed and all subsequent hashes are derived from this "source" hash.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the item is possibly in the Bloom filter, `false` otherwise.
+    #[inline]
+    pub fn contains_hash(&self, source_hash: u64) -> bool {
+        let [mut h1, h2] = starting_hashes(source_hash);
         (0..self.num_hashes).all(|_| {
             // Set bits the traditional way--1 bit per composed hash
             let index = block_index(self.num_blocks(), h1);
@@ -345,6 +370,17 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     pub fn clear(&mut self) {
         self.bits.clear();
     }
+
+    /// Returns the hash of `val` using this Bloom filter's hasher.
+    /// The resulting value can be used in [`Self::contains_hash`] or [`Self::insert_hash`].
+    /// All subsequent hashes are derived from this source hash.
+    /// This is useful for pre-computing hash values in order to store them or send them over the network.
+    #[inline]
+    pub fn source_hash(&self, val: &(impl Hash + ?Sized)) -> u64 {
+        let mut state = self.hasher.build_hasher();
+        val.hash(&mut state);
+        state.finish()
+    }
 }
 
 impl<T, const BLOCK_SIZE_BITS: usize, S: BuildHasher> Extend<T> for BloomFilter<BLOCK_SIZE_BITS, S>
@@ -385,15 +421,11 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BloomFilter<BLOCK_SIZE
 /// For h2 we'll use lower 32 bits of h, and multiply by a large constant (same constant as FxHash)
 ///     - h2 is basically a "weak hash" of h1
 #[inline]
-pub(crate) fn get_orginal_hashes(
-    hasher: &impl BuildHasher,
-    val: &(impl Hash + ?Sized),
-) -> [u64; 2] {
-    let mut state = hasher.build_hasher();
-    val.hash(&mut state);
-    let h1 = state.finish();
-    let h2 = h1.wrapping_shr(32).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
-    [h1, h2]
+pub(crate) fn starting_hashes(hash: u64) -> [u64; 2] {
+    let h2 = hash
+        .wrapping_shr(32)
+        .wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
+    [hash, h2]
 }
 
 /// Returns a the block index for an item's hash.
@@ -684,17 +716,14 @@ mod tests {
 
     #[test]
     fn block_hash_distribution() {
-        fn block_hash_distribution_<H: BuildHasher + Seeded>(num_blocks: usize) {
+        let filter: BloomFilter<512> = BloomFilter::new_builder(1024).seed(&42).hashes(1);
+        for num_blocks in [2, 7, 10, 100] {
             let mut buckets = vec![0; num_blocks];
-            let hasher = H::seeded(&[42; 16]);
             for x in random_numbers(num_blocks * 10000, 42) {
-                let [h1, _] = get_orginal_hashes(&hasher, &x);
+                let [h1, _] = starting_hashes(filter.source_hash(&x));
                 buckets[block_index(num_blocks, h1)] += 1;
             }
             assert_even_distribution(&buckets, 0.05);
-        }
-        for size in [2, 7, 10, 100] {
-            block_hash_distribution_::<DefaultHasher>(size);
         }
     }
 
@@ -717,7 +746,7 @@ mod tests {
     fn index_hash_distribution() {
         fn index_hash_distribution_<const N: usize>(thresh_pct: f64) {
             let filter: BloomFilter<N> = BloomFilter::new_builder(1).seed(&42).hashes(1);
-            let [mut h1, h2] = get_orginal_hashes(&filter.hasher, "qwerty");
+            let [mut h1, h2] = starting_hashes(filter.source_hash("qwerty"));
             // Make sure the default hasher is not behaving differently on different devices
             assert_eq!(h1, 16134017999000178247, "base hash not as expected!");
             assert_eq!(h2, 6208544785341434143, "base hash not as expected!");
@@ -751,7 +780,7 @@ mod tests {
                 let num = 2000 * N;
                 let mut counts = vec![0; N * filter.num_blocks()];
                 for val in (0..num).map(f) {
-                    let [mut h1, h2] = get_orginal_hashes(&filter.hasher, &val);
+                    let [mut h1, h2] = starting_hashes(filter.source_hash(&val));
                     let block_index = block_index(filter.num_blocks(), h1);
                     for _ in 0..filter.num_hashes() {
                         let j = BloomFilter::<N>::bit_index(&mut h1, h2);
