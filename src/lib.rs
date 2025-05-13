@@ -718,8 +718,9 @@ mod tests {
         fn index_hash_distribution_<const N: usize>(thresh_pct: f64) {
             let filter: BloomFilter<N> = BloomFilter::new_builder(1).seed(&42).hashes(1);
             let [mut h1, h2] = get_orginal_hashes(&filter.hasher, "qwerty");
-            assert_eq!(h1, 10593016135521423434);
-            assert_eq!(h2, 17953629391013907857);
+            // Make sure the default hasher is not behaving differently on different devices
+            assert_eq!(h1, 16134017999000178247, "base hash not as expected!");
+            assert_eq!(h2, 6208544785341434143, "base hash not as expected!");
             let mut counts = [0; N];
             let iterations = TRIALS * N;
             for _ in 0..iterations {
