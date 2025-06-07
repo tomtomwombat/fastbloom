@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
 /// u64's are used to store 64 bits, so the index ranges from 0 to 63.
@@ -36,28 +34,10 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
         self.bits.len()
     }
 
-    #[inline]
-    const fn block_range(index: usize) -> Range<usize> {
-        let block_index = index * Self::BLOCK_SIZE;
-        block_index..(block_index + Self::BLOCK_SIZE)
-    }
-
     /// The number of blocks in the `BlockedBitVector`
     #[inline]
     pub fn num_blocks(&self) -> usize {
         self.bits.len() >> Self::LOG2_BLOCK_SIZE
-    }
-
-    /// Returns a reference to the raw data for the `i`th block in the `BlockedBitVec`
-    #[inline]
-    pub fn get_block(&self, i: usize) -> &[u64] {
-        &self.bits[Self::block_range(i)]
-    }
-
-    /// Returns a mutable reference to the raw data for the `i`th block in the `BlockedBitVec`
-    #[inline]
-    pub fn get_block_mut(&mut self, index: usize) -> &mut [u64] {
-        &mut self.bits[Self::block_range(index)]
     }
 
     #[inline]

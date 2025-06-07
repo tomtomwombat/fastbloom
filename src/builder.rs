@@ -2,8 +2,6 @@ use crate::{BloomFilter, BuildHasher, DefaultHasher};
 use std::f64::consts::LN_2;
 use std::hash::Hash;
 
-use crate::sparse_hash;
-
 /// A Bloom filter builder with an immutable number of bits.
 ///
 /// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
@@ -76,33 +74,9 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
     /// ```
     pub fn hashes(self, num_hashes: u32) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        self.hashes_f(num_hashes as f64)
-    }
-
-    /// To generate ~`total_num_hashes` we'll use a combination of traditional index derived from hashes and "sparse hashes".
-    /// sparse hashes's are per u64 in the block, and for that u64 represent some indexes already set.
-    /// "rounds" are the amount of work/iterations we need to do to get a sparse hash.
-    /// For more on sparse hashes, see "BloomFilter::sparse_hash".
-    ///
-    /// For example, if our target total hashes 40, and we have a block of two u64s,
-    /// we'll require ~40 bits (ignoring probability collisions for simplicity in this example) set across the two u64s.
-    /// for each u64 in the block, generate two sparse hashes each with about 16 bits set (2 rounds each).
-    /// then calcuate 8 bit indexes from the hash to cover the remaining. 16 + 16 + 8 = 40.
-    /// the total work here is 4 rounds + 8 hashes, instead of 40 hashes.
-    ///
-    /// Note:
-    /// - the min number of rounds is 1, generating around ~32 bits, which is the max entropy in the u64.
-    /// - the max number of rounds is ~4. That produces a sparse hash of ~4 bits set (1/2^4), at which point we may as well calculate 4 bit indexes normally.
-    fn hashes_f(self, total_num_hashes: f64) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let total_num_hashes = total_num_hashes.floor();
-        let (num_hashes, num_rounds) =
-            sparse_hash::optimize_hashing(total_num_hashes, BLOCK_SIZE_BITS);
-
         BloomFilter {
             bits: self.data.into(),
-            target_hashes: total_num_hashes as u64,
             num_hashes,
-            num_rounds,
             hasher: self.hasher,
         }
     }
@@ -124,7 +98,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
         let num_blocks = (self.data.len() as f64 / u64s_per_block).ceil();
         let items_per_block = expected_num_items as f64 / num_blocks;
         let num_hashes = BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(items_per_block);
-        self.hashes_f(num_hashes)
+        self.hashes(num_hashes as u32)
     }
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
