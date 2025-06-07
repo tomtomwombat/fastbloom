@@ -22,7 +22,7 @@ const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlockedBitVec<const BLOCK_SIZE_BITS: usize> {
-    bits: Vec<u64>,
+    bits: Box<[u64]>,
 }
 
 impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
@@ -102,7 +102,7 @@ impl<const BLOCK_SIZE_BITS: usize> From<Vec<u64>> for BlockedBitVec<BLOCK_SIZE_B
             bits.extend(vec![0; num_u64s_per_block - r]);
         }
         bits.shrink_to_fit();
-        Self { bits }
+        Self { bits: bits.into() }
     }
 }
 
