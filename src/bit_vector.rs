@@ -32,6 +32,11 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     const LOG2_BLOCK_SIZE: u32 = u32::ilog2(Self::BLOCK_SIZE as u32);
 
     #[inline]
+    pub const fn len(&self) -> usize {
+        self.bits.len()
+    }
+
+    #[inline]
     const fn block_range(index: usize) -> Range<usize> {
         let block_index = index * Self::BLOCK_SIZE;
         block_index..(block_index + Self::BLOCK_SIZE)
@@ -55,30 +60,18 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
         &mut self.bits[Self::block_range(index)]
     }
 
-    /// Returns a bit "coordinate" (u64 and bit index pair) from a index in a block, `bit_index`.
-    /// The `usize` is used to get the corresponding u64 from `self.bits`,
-    /// the u64 is a mask used to get the corresponding bit from that u64.
     #[inline]
-    const fn coordinate(bit_index: usize) -> (usize, u64) {
-        let index = bit_index.wrapping_shr(BIT_MASK_LEN);
-        let bit = 1u64 << (bit_index as u64 & BIT_MASK);
-        (index, bit)
-    }
-
-    /// Sets the `bit_index`th bit in the block to 1.
-    #[inline]
-    pub fn set_for_block(block: &mut [u64], bit_index: usize) -> bool {
-        let (index, bit) = Self::coordinate(bit_index);
-        let previously_contained = block[index] & bit > 0;
-        block[index] |= bit;
+    pub const fn set(&mut self, index: usize, hash: u64) -> bool {
+        let bit = 1u64 << (hash & BIT_MASK);
+        let previously_contained = self.bits[index] & bit > 0;
+        self.bits[index] |= bit;
         previously_contained
     }
 
-    /// Returns true if the `bit_index`th in the block is 1.
     #[inline]
-    pub fn check_for_block(block: &[u64], bit_index: usize) -> bool {
-        let (index, bit) = Self::coordinate(bit_index);
-        block[index] & bit > 0
+    pub const fn check(&self, index: usize, hash: u64) -> bool {
+        let bit = 1u64 << (hash & BIT_MASK);
+        self.bits[index] & bit > 0
     }
 
     #[inline]
@@ -138,15 +131,12 @@ mod tests {
             let block_index = rng.random_range(0..vec.num_blocks());
             let bit_index = rng.random_range(0..64);
 
-            let block = vec.get_block(block_index);
-
             if !control.contains(&(block_index, bit_index)) {
-                assert!(!BlockedBitVec::<64>::check_for_block(block, bit_index));
+                assert!(!vec.check(block_index, bit_index));
             }
-            let block_mut = vec.get_block_mut(block_index);
             control.insert((block_index, bit_index));
-            BlockedBitVec::<64>::set_for_block(block_mut, bit_index);
-            assert!(BlockedBitVec::<64>::check_for_block(block_mut, bit_index));
+            vec.set(block_index, bit_index);
+            assert!(vec.check(block_index, bit_index));
         }
     }
 }
