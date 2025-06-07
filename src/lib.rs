@@ -49,7 +49,7 @@ use bit_vector::BlockedBitVec;
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BloomFilter<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
-    bits: BlockedBitVec<BLOCK_SIZE_BITS>,
+    bits: BlockedBitVec,
     /// The total target hashes per item that is specified by user or optimized to maximize accuracy
     num_hashes: u32,
     hasher: S,
@@ -243,13 +243,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
 
     /// Returns the total number of in-memory bits supporting the Bloom filter.
     pub fn num_bits(&self) -> usize {
-        self.num_blocks() * BLOCK_SIZE_BITS
-    }
-
-    /// Returns the total number of in-memory blocks supporting the Bloom filter.
-    /// Each block is `BLOCK_SIZE_BITS` bits.
-    pub fn num_blocks(&self) -> usize {
-        self.bits.num_blocks()
+        self.bits.num_bits()
     }
 
     /// Returns a `u64` slice of this `BloomFilter`’s contents.
@@ -402,7 +396,7 @@ mod tests {
                 .seed(&1)
                 .hashes(3);
             assert_eq!(b, b2);
-            assert_eq!(b.num_blocks() * N, b.as_slice().len() * 64);
+            assert_eq!(b.num_bits(), b.as_slice().len() * 64);
             assert!(size <= b.as_slice().len() * 64);
             assert!((size + N) > b.as_slice().len() * 64);
         }

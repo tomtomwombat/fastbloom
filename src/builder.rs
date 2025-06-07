@@ -293,26 +293,9 @@ mod for_accuracy_tests {
     #[test]
     fn data_size() {
         let size_bits = 512 * 1000;
-        let bloom = BloomFilter::with_num_bits(size_bits)
-            .block_size_512()
-            .hashes(4);
+        let bloom = BloomFilter::with_num_bits(size_bits).hashes(4);
         assert_eq!(bloom.as_slice().len() * 64, size_bits);
-        assert_eq!(bloom.num_blocks(), size_bits / 512);
-        let bloom = BloomFilter::with_num_bits(size_bits)
-            .block_size_256()
-            .hashes(4);
-        assert_eq!(bloom.as_slice().len() * 64, size_bits);
-        assert_eq!(bloom.num_blocks(), size_bits / 256);
-        let bloom = BloomFilter::with_num_bits(size_bits)
-            .block_size_128()
-            .hashes(4);
-        assert_eq!(bloom.as_slice().len() * 64, size_bits);
-        assert_eq!(bloom.num_blocks(), size_bits / 128);
-        let bloom = BloomFilter::with_num_bits(size_bits)
-            .block_size_64()
-            .hashes(4);
-        assert_eq!(bloom.as_slice().len() * 64, size_bits);
-        assert_eq!(bloom.num_blocks(), size_bits / 64);
+        assert_eq!(bloom.num_bits(), size_bits);
     }
 
     #[test]
@@ -352,30 +335,6 @@ mod for_accuracy_tests {
                     .hashes(num_hashes)
                     .num_hashes()
             );
-        }
-    }
-
-    #[test]
-    fn correct_size() {
-        for num_bits in 1..10000 {
-            let b = BloomFilter::with_num_bits(num_bits).hashes(1);
-            assert_eq!(b.num_bits() % 512, 0);
-            let b = BloomFilter::with_num_bits(num_bits)
-                .block_size_512()
-                .hashes(1);
-            assert_eq!(b.num_bits() % 512, 0);
-            let b = BloomFilter::with_num_bits(num_bits)
-                .block_size_256()
-                .hashes(1);
-            assert_eq!(b.num_bits() % 256, 0);
-            let b = BloomFilter::with_num_bits(num_bits)
-                .block_size_128()
-                .hashes(1);
-            assert_eq!(b.num_bits() % 128, 0);
-            let b = BloomFilter::with_num_bits(num_bits)
-                .block_size_64()
-                .hashes(1);
-            assert_eq!(b.num_bits() % 64, 0);
         }
     }
 }

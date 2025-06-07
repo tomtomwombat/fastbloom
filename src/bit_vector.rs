@@ -19,25 +19,19 @@ const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 /// the size of a block is a power of 2.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BlockedBitVec<const BLOCK_SIZE_BITS: usize> {
+pub struct BlockedBitVec {
     bits: Box<[u64]>,
 }
 
-impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
-    /// Block size in u64s
-    const BLOCK_SIZE: usize = BLOCK_SIZE_BITS / 64;
-    /// Used to shift u64 index
-    const LOG2_BLOCK_SIZE: u32 = u32::ilog2(Self::BLOCK_SIZE as u32);
-
+impl BlockedBitVec {
     #[inline]
     pub const fn len(&self) -> usize {
         self.bits.len()
     }
 
-    /// The number of blocks in the `BlockedBitVector`
     #[inline]
-    pub fn num_blocks(&self) -> usize {
-        self.bits.len() >> Self::LOG2_BLOCK_SIZE
+    pub const fn num_bits(&self) -> usize {
+        self.len() * u64::BITS as usize
     }
 
     #[inline]
@@ -67,9 +61,9 @@ impl<const BLOCK_SIZE_BITS: usize> BlockedBitVec<BLOCK_SIZE_BITS> {
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize> From<Vec<u64>> for BlockedBitVec<BLOCK_SIZE_BITS> {
+impl From<Vec<u64>> for BlockedBitVec {
     fn from(mut bits: Vec<u64>) -> Self {
-        let num_u64s_per_block = BLOCK_SIZE_BITS / 64;
+        let num_u64s_per_block = 1;
         let r = bits.len() % num_u64s_per_block;
         if r != 0 {
             bits.extend(vec![0; num_u64s_per_block - r]);
@@ -87,28 +81,21 @@ mod tests {
 
     #[test]
     fn test_to_from_vec() {
-        fn to_from_<const N: usize>(size: usize) {
-            let b: BlockedBitVec<N> = vec![0u64; size].into();
-            assert_eq!(b.num_blocks() * N, b.as_slice().len() * 64);
-            assert!(size <= b.as_slice().len());
-            assert!((size + N) > b.as_slice().len());
-        }
-        for size in 1..=10009 {
-            to_from_::<64>(size);
-            to_from_::<128>(size);
-            to_from_::<256>(size);
-            to_from_::<512>(size);
-        }
+        let size = 42;
+        let b: BlockedBitVec = vec![0u64; size].into();
+        assert_eq!(b.num_bits(), b.as_slice().len() * 64);
+        assert!(size <= b.as_slice().len());
+        assert!((size + 64) > b.as_slice().len());
     }
 
     #[test]
     fn test_only_random_inserts_are_contained() {
-        let mut vec = BlockedBitVec::<64>::from(vec![0; 80]);
+        let mut vec = BlockedBitVec::from(vec![0; 80]);
         let mut control = HashSet::new();
         let mut rng = rand::rng();
 
         for _ in 0..100000 {
-            let block_index = rng.random_range(0..vec.num_blocks());
+            let block_index = rng.random_range(0..vec.num_bits() / 64);
             let bit_index = rng.random_range(0..64);
 
             if !control.contains(&(block_index, bit_index)) {
