@@ -6,17 +6,7 @@ const BIT_MASK_LEN: u32 = u32::ilog2(u64::BITS);
 /// Gets 6 last bits from the bit index, which are used to index a u64's bits.
 const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 
-/// A bit vector partitioned in to blocks.
-///
-/// Blocks are a power of 2 length array of u64's.
-/// The bit size of blocks therefore can be 64, 128, 256, etc.
-/// Only `BlockedBitVec`'s with block sizes following this rule can be constructed.
-///
-/// Loading a block, such as with `get_block`, is cache efficient.
-/// Membership checks can be done locally inside a block.
-///
-/// Indexing a block is also efficient, since it can be done with bit operators because
-/// the size of a block is a power of 2.
+/// A bit vector partitioned in to `u64` blocks.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlockedBitVec {

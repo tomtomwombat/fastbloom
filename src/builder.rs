@@ -98,7 +98,6 @@ impl<S: BuildHasher> BuilderWithBits<S> {
 
     /// The optimal number of hashes to perform for an item given the expected number of items in the bloom filter.
     /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>.
-    /// TODO: emprically derive this
     #[inline]
     fn optimal_hashes_f(len: usize, expected_num_items: usize) -> f64 {
         let load = expected_num_items as f64 / len as f64;
