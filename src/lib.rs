@@ -50,7 +50,6 @@ use bit_vector::BlockedBitVec;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BloomFilter<S = DefaultHasher> {
     bits: BlockedBitVec,
-    /// The total target hashes per item that is specified by user or optimized to maximize accuracy
     num_hashes: u32,
     hasher: S,
 }
