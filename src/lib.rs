@@ -14,9 +14,9 @@ use bit_vector::BlockedBitVec;
 /// are not, i.e. [`contains`](Self::contains) for all items in the set is guaranteed to return
 /// true, while [`contains`](Self::contains) for all items not in the set probably return false.
 ///
-/// [`BloomFilter`] is supported by an underlying bit vector, chunked into 512, 256, 128, or 64 bit "blocks", to track item membership.
-/// To insert, a number of bits are set at positions based on the item's hash in one of the underlying bit vector's block.
-/// To check membership, a number of bits are checked at positions based on the item's hash in one of the underlying bit vector's block.
+/// [`BloomFilter`] is supported by an underlying bit vector to track item membership.
+/// To insert, a number of bits are set at positions based on the item's hash in the underlying bit vector.
+/// To check membership, a number of bits are checked at positions based on the item's hash in the underlying bit vector.
 ///
 /// Once constructed, neither the Bloom filter's underlying memory usage nor number of bits per item change.
 ///
@@ -48,7 +48,7 @@ use bit_vector::BlockedBitVec;
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BloomFilter<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
+pub struct BloomFilter<S = DefaultHasher> {
     bits: BlockedBitVec,
     /// The total target hashes per item that is specified by user or optimized to maximize accuracy
     num_hashes: u32,
@@ -56,34 +56,28 @@ pub struct BloomFilter<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
 }
 
 impl BloomFilter {
-    fn new_builder<const BLOCK_SIZE_BITS: usize>(
-        num_bits: usize,
-    ) -> BuilderWithBits<BLOCK_SIZE_BITS> {
+    fn new_builder(num_bits: usize) -> BuilderWithBits {
         assert!(num_bits > 0);
         // Only available in rust 1.73+
         // let num_u64s = num_bits.div_ceil(64);
         let num_u64s = (num_bits + 64 - 1) / 64;
-        BuilderWithBits::<BLOCK_SIZE_BITS> {
+        BuilderWithBits {
             data: vec![0; num_u64s],
             hasher: Default::default(),
         }
     }
 
-    fn new_from_vec<const BLOCK_SIZE_BITS: usize>(
-        vec: Vec<u64>,
-    ) -> BuilderWithBits<BLOCK_SIZE_BITS> {
+    fn new_from_vec(vec: Vec<u64>) -> BuilderWithBits {
         assert!(!vec.is_empty());
-        BuilderWithBits::<BLOCK_SIZE_BITS> {
+        BuilderWithBits {
             data: vec,
             hasher: Default::default(),
         }
     }
 
-    fn new_with_false_pos<const BLOCK_SIZE_BITS: usize>(
-        fp: f64,
-    ) -> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS> {
+    fn new_with_false_pos(fp: f64) -> BuilderWithFalsePositiveRate {
         assert!(fp > 0.0);
-        BuilderWithFalsePositiveRate::<BLOCK_SIZE_BITS> {
+        BuilderWithFalsePositiveRate {
             desired_fp_rate: fp,
             hasher: Default::default(),
         }
@@ -99,8 +93,8 @@ impl BloomFilter {
     /// use fastbloom::BloomFilter;
     /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(1000);
     /// ```
-    pub fn with_false_pos(fp: f64) -> BuilderWithFalsePositiveRate<512> {
-        BloomFilter::new_with_false_pos::<512>(fp)
+    pub fn with_false_pos(fp: f64) -> BuilderWithFalsePositiveRate {
+        BloomFilter::new_with_false_pos(fp)
     }
 
     /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` with `num_bits` number of bits for tracking item membership.
@@ -112,13 +106,11 @@ impl BloomFilter {
     /// use fastbloom::BloomFilter;
     /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
     /// ```
-    pub fn with_num_bits(num_bits: usize) -> BuilderWithBits<512> {
-        BloomFilter::new_builder::<512>(num_bits)
+    pub fn with_num_bits(num_bits: usize) -> BuilderWithBits {
+        BloomFilter::new_builder(num_bits)
     }
 
     /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
-    ///
-    /// To fit the bit block size, `bit_vec` will be padded with `0u64`s and the end.
     ///
     /// # Panics
     /// Panics if the bit vector, `bit_vec`, is empty.
@@ -133,30 +125,12 @@ impl BloomFilter {
     /// assert!(new.contains(&1));
     /// assert!(new.contains(&2));
     /// ```
-    pub fn from_vec(bit_vec: Vec<u64>) -> BuilderWithBits<512> {
-        BloomFilter::new_from_vec::<512>(bit_vec)
+    pub fn from_vec(bit_vec: Vec<u64>) -> BuilderWithBits {
+        BloomFilter::new_from_vec(bit_vec)
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, S> {
-    /// The optimal number of hashes to perform for an item given the expected number of items to be contained in one block.
-    /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>
-    #[inline]
-    fn optimal_hashes_f(items_per_block: f64) -> f64 {
-        let block_size = BLOCK_SIZE_BITS as f64;
-        let u64s_per_block = block_size / 64.0f64;
-        let max_hashes_per_u64 = hashes_for_bits(32);
-        let max_hashes = u64s_per_block * max_hashes_per_u64 * 0.125;
-        let hashes_per_block = block_size / items_per_block * f64::ln(2.0f64);
-        if hashes_per_block > max_hashes {
-            max_hashes
-        } else if hashes_per_block < 1.0 {
-            1.0
-        } else {
-            hashes_per_block
-        }
-    }
-
+impl<S: BuildHasher> BloomFilter<S> {
     /// Inserts an element into the Bloom filter.
     ///
     /// # Returns
@@ -254,7 +228,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     /// use fastbloom::BloomFilter;
     ///
     /// let data = vec![0x517cc1b727220a95; 8];
-    /// let bloom = BloomFilter::<512>::from_vec(data.clone()).hashes(4);
+    /// let bloom = BloomFilter::from_vec(data.clone()).hashes(4);
     /// assert_eq!(bloom.as_slice().to_vec(), data);
     /// ```
     #[inline]
@@ -280,7 +254,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BloomFilter<BLOCK_SIZE_BITS, 
     }
 }
 
-impl<T, const BLOCK_SIZE_BITS: usize, S: BuildHasher> Extend<T> for BloomFilter<BLOCK_SIZE_BITS, S>
+impl<T, S: BuildHasher> Extend<T> for BloomFilter<S>
 where
     T: Hash,
 {
@@ -292,12 +266,12 @@ where
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq for BloomFilter<BLOCK_SIZE_BITS, S> {
+impl<S: BuildHasher> PartialEq for BloomFilter<S> {
     fn eq(&self, other: &Self) -> bool {
         self.bits == other.bits && self.num_hashes == other.num_hashes
     }
 }
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BloomFilter<BLOCK_SIZE_BITS, S> {}
+impl<S: BuildHasher> Eq for BloomFilter<S> {}
 
 /// The first two hashes of the value, h1 and h2.
 ///
@@ -341,12 +315,6 @@ fn next_hash(h1: &mut u64, h2: u64) -> u64 {
     *h1
 }
 
-#[inline]
-pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
-    f64::ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64))
-        / f64::ln(63.0f64 / 64.0f64)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,7 +331,7 @@ mod tests {
 
     const TRIALS: usize = 1_000_000;
 
-    fn false_pos_rate<const N: usize, H: BuildHasher>(filter: &BloomFilter<N, H>) -> f64 {
+    fn false_pos_rate<H: BuildHasher>(filter: &BloomFilter<H>) -> f64 {
         let mut total = 0;
         let mut false_positives = 0;
         for x in non_member_nums() {
@@ -388,23 +356,18 @@ mod tests {
 
     #[test]
     fn test_to_from_vec() {
-        fn to_from_<const N: usize>(size: usize) {
-            let mut b = BloomFilter::new_builder::<N>(size).seed(&1).hashes(3);
+        fn to_from_(size: usize) {
+            let mut b = BloomFilter::new_builder(size).seed(&1).hashes(3);
             b.extend(member_nums(1000));
             let x = b.as_slice();
-            let b2 = BloomFilter::new_from_vec::<N>(x.to_vec())
-                .seed(&1)
-                .hashes(3);
+            let b2 = BloomFilter::new_from_vec(x.to_vec()).seed(&1).hashes(3);
             assert_eq!(b, b2);
             assert_eq!(b.num_bits(), b.as_slice().len() * 64);
             assert!(size <= b.as_slice().len() * 64);
-            assert!((size + N) > b.as_slice().len() * 64);
+            assert!((size + u64::BITS as usize) > b.as_slice().len() * 64);
         }
         for size in 1..=10009 {
-            to_from_::<64>(size);
-            to_from_::<128>(size);
-            to_from_::<256>(size);
-            to_from_::<512>(size);
+            to_from_(size);
         }
     }
 
@@ -416,83 +379,66 @@ mod tests {
 
     #[test]
     fn target_fp_is_accurate() {
-        fn target_fp_is_accurate_<const N: usize>(thresh: f64) {
-            for mag in 1..=5 {
-                let fp = 1.0f64 / 10u64.pow(mag) as f64;
-                for num_items_mag in 1..6 {
-                    let num_items = 10usize.pow(num_items_mag);
-                    let mut filter = BloomFilter::new_with_false_pos::<N>(fp)
-                        .seed(&42)
-                        .expected_items(num_items);
-                    filter.extend(member_nums(num_items));
-                    let sample_fp = false_pos_rate(&filter);
-                    if sample_fp > 0.0 {
-                        let score = sample_fp / fp;
-                        // sample_fp can be at most X times greater than requested fp
-                        assert!(score <= thresh, "score {score:}, thresh {thresh:}, block_size: {N:}, size: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
-                    }
+        let thresh = 15.0f64;
+        for mag in 1..=5 {
+            let fp = 1.0f64 / 10u64.pow(mag) as f64;
+            for num_items_mag in 1..6 {
+                let num_items = 10usize.pow(num_items_mag);
+                let mut filter = BloomFilter::new_with_false_pos(fp)
+                    .seed(&42)
+                    .expected_items(num_items);
+                filter.extend(member_nums(num_items));
+                let sample_fp = false_pos_rate(&filter);
+                if sample_fp > 0.0 {
+                    let score = sample_fp / fp;
+                    // sample_fp can be at most X times greater than requested fp
+                    assert!(score <= thresh, "score {score:}, thresh {thresh:}, size: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
                 }
             }
         }
-        target_fp_is_accurate_::<512>(15.0);
-        target_fp_is_accurate_::<256>(20.0);
-        target_fp_is_accurate_::<128>(25.0);
-        target_fp_is_accurate_::<64>(100.0);
     }
 
     #[test]
     fn nothing_after_clear() {
-        fn nothing_after_clear_<const N: usize>() {
-            for mag in 1..6 {
-                let size = 10usize.pow(mag);
-                for bloom_size_mag in 6..10 {
-                    let num_blocks_bytes = 1 << bloom_size_mag;
-                    let num_bits = num_blocks_bytes * 8;
-                    let mut filter = BloomFilter::new_builder::<N>(num_bits)
-                        .seed(&7)
-                        .expected_items(size);
-                    filter.extend(member_nums(size));
-                    assert!(filter.num_hashes() > 0);
-                    filter.clear();
-                    assert!(member_nums(size).all(|x| !filter.contains(&x)));
-                }
+        for mag in 1..6 {
+            let size = 10usize.pow(mag);
+            for bloom_size_mag in 6..10 {
+                let num_blocks_bytes = 1 << bloom_size_mag;
+                let num_bits = num_blocks_bytes * 8;
+                let mut filter = BloomFilter::new_builder(num_bits)
+                    .seed(&7)
+                    .expected_items(size);
+                filter.extend(member_nums(size));
+                assert!(filter.num_hashes() > 0);
+                filter.clear();
+                assert!(member_nums(size).all(|x| !filter.contains(&x)));
             }
         }
-        nothing_after_clear_::<512>();
-        nothing_after_clear_::<256>();
-        nothing_after_clear_::<128>();
-        nothing_after_clear_::<64>();
     }
 
     #[test]
     fn random_inserts_always_contained() {
-        fn random_inserts_always_contained_<const N: usize>() {
-            for mag in 1..6 {
-                let size = 10usize.pow(mag);
-                for bloom_size_mag in 6..10 {
-                    let num_blocks_bytes = 1 << bloom_size_mag;
-                    let num_bits = num_blocks_bytes * 8;
-                    let mut filter = BloomFilter::new_builder::<N>(num_bits).expected_items(size);
-                    filter.extend(member_nums(size));
-                    assert!(member_nums(size).all(|x| filter.contains(&x)));
-                    assert!(member_nums(size).all(|x| filter.insert(&x)));
-                }
+        for mag in 1..6 {
+            let size = 10usize.pow(mag);
+            for bloom_size_mag in 6..10 {
+                let num_blocks_bytes = 1 << bloom_size_mag;
+                let num_bits = num_blocks_bytes * 8;
+                let mut filter = BloomFilter::new_builder(num_bits).expected_items(size);
+                filter.extend(member_nums(size));
+                assert!(member_nums(size).all(|x| filter.contains(&x)));
+                assert!(member_nums(size).all(|x| filter.insert(&x)));
             }
         }
-        random_inserts_always_contained_::<512>();
-        random_inserts_always_contained_::<256>();
-        random_inserts_always_contained_::<128>();
-        random_inserts_always_contained_::<64>();
     }
 
     #[test]
     fn test_optimal_hashes_is_optimal() {
-        fn test_optimal_hashes_is_optimal_<const BLOCK_SIZE_BITS: usize, H: Seeded>() {
+        fn test_optimal_hashes_is_optimal_<H: Seeded>() {
             let sizes = [1000, 2000, 5000, 6000, 8000, 10000];
             let mut wins = 0;
             for num_items in sizes {
                 let num_bits = 65000 * 8;
-                let mut filter = BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+                let mut filter = BloomFilter::new_builder(num_bits)
                     .hasher(H::seeded(&[42; 16]))
                     .expected_items(num_items);
                 filter.extend(member_nums(num_items));
@@ -501,7 +447,7 @@ mod tests {
                 let optimal_hashes = filter.num_hashes();
 
                 for num_hashes in [optimal_hashes - 1, optimal_hashes + 1] {
-                    let mut test_filter = BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+                    let mut test_filter = BloomFilter::new_builder(num_bits)
                         .hasher(H::seeded(&[42; 16]))
                         .hashes(num_hashes);
                     test_filter.extend(member_nums(num_items));
@@ -511,77 +457,62 @@ mod tests {
             }
             assert!(wins > sizes.len() / 2);
         }
-        test_optimal_hashes_is_optimal_::<512, DefaultHasher>();
-        test_optimal_hashes_is_optimal_::<256, DefaultHasher>();
-        test_optimal_hashes_is_optimal_::<128, DefaultHasher>();
-        test_optimal_hashes_is_optimal_::<64, DefaultHasher>();
+        test_optimal_hashes_is_optimal_::<DefaultHasher>();
     }
 
     #[test]
     fn seeded_is_same() {
-        fn seeded_is_same_<const N: usize>() {
-            let num_bits = 1 << 10;
-            let sample_vals = member_nums(1000).collect::<Vec<_>>();
-            for x in 0u8..32 {
-                let seed = x as u128;
-                assert_eq!(
-                    BloomFilter::new_builder::<N>(num_bits)
+        let num_bits = 1 << 10;
+        let sample_vals = member_nums(1000).collect::<Vec<_>>();
+        for x in 0u8..32 {
+            let seed = x as u128;
+            assert_eq!(
+                BloomFilter::new_builder(num_bits)
+                    .seed(&seed)
+                    .items(sample_vals.iter()),
+                BloomFilter::new_builder(num_bits)
+                    .seed(&seed)
+                    .items(sample_vals.iter())
+            );
+            assert!(
+                !(BloomFilter::new_builder(num_bits)
+                    .seed(&(seed + 1))
+                    .items(sample_vals.iter())
+                    == BloomFilter::new_builder(num_bits)
                         .seed(&seed)
-                        .items(sample_vals.iter()),
-                    BloomFilter::new_builder::<N>(num_bits)
-                        .seed(&seed)
-                        .items(sample_vals.iter())
-                );
-                assert!(
-                    !(BloomFilter::new_builder::<N>(num_bits)
-                        .seed(&(seed + 1))
-                        .items(sample_vals.iter())
-                        == BloomFilter::new_builder::<N>(num_bits)
-                            .seed(&seed)
-                            .items(sample_vals.iter()))
-                );
-            }
+                        .items(sample_vals.iter()))
+            );
         }
-        seeded_is_same_::<512>();
-        seeded_is_same_::<256>();
-        seeded_is_same_::<128>();
-        seeded_is_same_::<64>();
     }
 
     #[test]
     fn false_pos_decrease_with_size() {
-        fn false_pos_decrease_with_size_<const N: usize>() {
-            for mag in 5..6 {
-                let size = 10usize.pow(mag);
-                let mut prev_fp = 1.0;
-                let mut prev_prev_fp = 1.0;
-                for num_bits_mag in 9..22 {
-                    let num_bits = 1 << num_bits_mag;
+        for mag in 5..6 {
+            let size = 10usize.pow(mag);
+            let mut prev_fp = 1.0;
+            let mut prev_prev_fp = 1.0;
+            for num_bits_mag in 9..22 {
+                let num_bits = 1 << num_bits_mag;
 
-                    let mut filter = BloomFilter::new_builder::<N>(num_bits).expected_items(size);
-                    filter.extend(member_nums(size));
+                let mut filter = BloomFilter::new_builder(num_bits).expected_items(size);
+                filter.extend(member_nums(size));
 
-                    let fp = false_pos_rate(&filter);
+                let fp = false_pos_rate(&filter);
 
-                    let err = format!(
-                        "size: {size:}, num_bits: {num_bits:}, {:.6}, {:?}",
-                        fp,
-                        filter.num_hashes(),
-                    );
-                    assert!(
-                        fp <= prev_fp || prev_fp <= prev_prev_fp || fp < 0.01,
-                        "{}",
-                        err
-                    ); // allows 1 data point to be higher
-                    prev_prev_fp = prev_fp;
-                    prev_fp = fp;
-                }
+                let err = format!(
+                    "size: {size:}, num_bits: {num_bits:}, {:.6}, {:?}",
+                    fp,
+                    filter.num_hashes(),
+                );
+                assert!(
+                    fp <= prev_fp || prev_fp <= prev_prev_fp || fp < 0.01,
+                    "{}",
+                    err
+                ); // allows 1 data point to be higher
+                prev_prev_fp = prev_fp;
+                prev_fp = fp;
             }
         }
-        false_pos_decrease_with_size_::<512>();
-        false_pos_decrease_with_size_::<256>();
-        false_pos_decrease_with_size_::<128>();
-        false_pos_decrease_with_size_::<64>();
     }
 
     fn assert_even_distribution(distr: &[u64], err: f64) {
@@ -627,60 +558,24 @@ mod tests {
     #[test]
     fn eq_constructors_num_bits() {
         assert_eq!(
-            BloomFilter::with_num_bits(4).block_size_512().hashes(4),
-            BloomFilter::new_builder::<512>(4).hashes(4),
-        );
-        assert_eq!(
-            BloomFilter::with_num_bits(4).block_size_256().hashes(4),
-            BloomFilter::new_builder::<256>(4).hashes(4),
-        );
-        assert_eq!(
-            BloomFilter::with_num_bits(4).block_size_128().hashes(4),
-            BloomFilter::new_builder::<128>(4).hashes(4),
-        );
-        assert_eq!(
-            BloomFilter::with_num_bits(4).block_size_64().hashes(4),
-            BloomFilter::new_builder::<64>(4).hashes(4),
+            BloomFilter::with_num_bits(4).hashes(4),
+            BloomFilter::new_builder(4).hashes(4),
         );
     }
 
     #[test]
     fn eq_constructors_false_pos() {
         assert_eq!(
-            BloomFilter::with_false_pos(0.4).block_size_512(),
-            BloomFilter::new_with_false_pos::<512>(0.4),
-        );
-        assert_eq!(
-            BloomFilter::with_false_pos(0.4).block_size_256(),
-            BloomFilter::new_with_false_pos::<256>(0.4),
-        );
-        assert_eq!(
-            BloomFilter::with_false_pos(0.4).block_size_128(),
-            BloomFilter::new_with_false_pos::<128>(0.4),
-        );
-        assert_eq!(
-            BloomFilter::with_false_pos(0.4).block_size_64(),
-            BloomFilter::new_with_false_pos::<64>(0.4),
+            BloomFilter::with_false_pos(0.4),
+            BloomFilter::new_with_false_pos(0.4),
         );
     }
 
     #[test]
     fn eq_constructors_from_vec() {
         assert_eq!(
-            BloomFilter::from_vec(vec![42; 42]).block_size_512(),
-            BloomFilter::new_from_vec::<512>(vec![42; 42]),
-        );
-        assert_eq!(
-            BloomFilter::from_vec(vec![42; 42]).block_size_256(),
-            BloomFilter::new_from_vec::<256>(vec![42; 42]),
-        );
-        assert_eq!(
-            BloomFilter::from_vec(vec![42; 42]).block_size_128(),
-            BloomFilter::new_from_vec::<128>(vec![42; 42]),
-        );
-        assert_eq!(
-            BloomFilter::from_vec(vec![42; 42]).block_size_64(),
-            BloomFilter::new_from_vec::<64>(vec![42; 42]),
+            BloomFilter::from_vec(vec![42; 42]),
+            BloomFilter::new_from_vec(vec![42; 42]),
         );
     }
 

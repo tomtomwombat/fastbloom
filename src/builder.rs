@@ -14,21 +14,19 @@ use std::hash::Hash;
 /// let builder = BloomFilter::from_vec(vec![0; 8]);
 /// ```
 #[derive(Debug, Clone)]
-pub struct BuilderWithBits<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
+pub struct BuilderWithBits<S = DefaultHasher> {
     pub(crate) data: Vec<u64>,
     pub(crate) hasher: S,
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq
-    for BuilderWithBits<BLOCK_SIZE_BITS, S>
-{
+impl<S: BuildHasher> PartialEq for BuilderWithBits<S> {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
     }
 }
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq for BuilderWithBits<BLOCK_SIZE_BITS, S> {}
+impl<S: BuildHasher> Eq for BuilderWithBits<S> {}
 
-impl<const BLOCK_SIZE_BITS: usize> BuilderWithBits<BLOCK_SIZE_BITS> {
+impl BuilderWithBits {
     /// Sets the seed for this builder. The later constructed [`BloomFilter`]
     /// will use this seed when hashing items.
     ///
@@ -45,7 +43,7 @@ impl<const BLOCK_SIZE_BITS: usize> BuilderWithBits<BLOCK_SIZE_BITS> {
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BITS, S> {
+impl<S: BuildHasher> BuilderWithBits<S> {
     /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
     /// this hasher when inserting and checking items.
     ///
@@ -57,8 +55,8 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     ///
     /// let bloom = BloomFilter::with_num_bits(1024).hasher(RandomState::default()).hashes(4);
     /// ```
-    pub fn hasher<H: BuildHasher>(self, hasher: H) -> BuilderWithBits<BLOCK_SIZE_BITS, H> {
-        BuilderWithBits::<BLOCK_SIZE_BITS, H> {
+    pub fn hasher<H: BuildHasher>(self, hasher: H) -> BuilderWithBits<H> {
+        BuilderWithBits::<H> {
             data: self.data,
             hasher,
         }
@@ -73,7 +71,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     ///
     /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
     /// ```
-    pub fn hashes(self, num_hashes: u32) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+    pub fn hashes(self, num_hashes: u32) -> BloomFilter<S> {
         BloomFilter {
             bits: self.data.into(),
             num_hashes,
@@ -93,12 +91,34 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     ///
     /// let bloom = BloomFilter::with_num_bits(1024).expected_items(500);
     /// ```
-    pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
-        let u64s_per_block = (BLOCK_SIZE_BITS / 64) as f64;
-        let num_blocks = (self.data.len() as f64 / u64s_per_block).ceil();
-        let items_per_block = expected_num_items as f64 / num_blocks;
-        let num_hashes = BloomFilter::<BLOCK_SIZE_BITS>::optimal_hashes_f(items_per_block);
+    pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<S> {
+        let num_hashes = Self::optimal_hashes_f(self.data.len(), expected_num_items);
         self.hashes(num_hashes as u32)
+    }
+
+    /// The optimal number of hashes to perform for an item given the expected number of items in the bloom filter.
+    /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>.
+    /// TODO: emprically derive this
+    #[inline]
+    fn optimal_hashes_f(len: usize, expected_num_items: usize) -> f64 {
+        let load = expected_num_items as f64 / len as f64;
+        let x = 64.0f64 / load;
+        let hashes_per_u64 = x * f64::ln(2.0f64);
+
+        let max_hashes = Self::hashes_for_bits(32);
+        if hashes_per_u64 > max_hashes {
+            max_hashes
+        } else if hashes_per_u64 < 1.0 {
+            1.0
+        } else {
+            hashes_per_u64
+        }
+    }
+
+    #[inline]
+    pub(crate) fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
+        f64::ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64))
+            / f64::ln(63.0f64 / 64.0f64)
     }
 
     /// "Consumes" this builder and constructs a [`BloomFilter`] containing
@@ -116,7 +136,7 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BI
     pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
         self,
         items: I,
-    ) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+    ) -> BloomFilter<S> {
         let into_iter = items.into_iter();
         let mut filter = self.expected_items(into_iter.len());
         filter.extend(into_iter);
@@ -142,24 +162,19 @@ fn optimal_size(items_count: f64, fp_p: f64) -> usize {
 /// let builder = BloomFilter::with_false_pos(0.01);
 /// ```
 #[derive(Debug, Clone)]
-pub struct BuilderWithFalsePositiveRate<const BLOCK_SIZE_BITS: usize = 512, S = DefaultHasher> {
+pub struct BuilderWithFalsePositiveRate<S = DefaultHasher> {
     pub(crate) desired_fp_rate: f64,
     pub(crate) hasher: S,
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> PartialEq
-    for BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S>
-{
+impl<S: BuildHasher> PartialEq for BuilderWithFalsePositiveRate<S> {
     fn eq(&self, other: &Self) -> bool {
         self.desired_fp_rate == other.desired_fp_rate
     }
 }
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> Eq
-    for BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S>
-{
-}
+impl<S: BuildHasher> Eq for BuilderWithFalsePositiveRate<S> {}
 
-impl<const BLOCK_SIZE_BITS: usize> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS> {
+impl BuilderWithFalsePositiveRate {
     /// Sets the seed for this builder. The later constructed [`BloomFilter`]
     /// will use this seed when hashing items.
     ///
@@ -176,9 +191,7 @@ impl<const BLOCK_SIZE_BITS: usize> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS>
     }
 }
 
-impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
-    BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S>
-{
+impl<S: BuildHasher> BuilderWithFalsePositiveRate<S> {
     /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
     /// this hasher when inserting and checking items.
     ///
@@ -190,11 +203,8 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
     ///
     /// let bloom = BloomFilter::with_false_pos(0.001).hasher(RandomState::default()).expected_items(100);
     /// ```
-    pub fn hasher<H: BuildHasher>(
-        self,
-        hasher: H,
-    ) -> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, H> {
-        BuilderWithFalsePositiveRate::<BLOCK_SIZE_BITS, H> {
+    pub fn hasher<H: BuildHasher>(self, hasher: H) -> BuilderWithFalsePositiveRate<H> {
+        BuilderWithFalsePositiveRate::<H> {
             desired_fp_rate: self.desired_fp_rate,
             hasher,
         }
@@ -212,9 +222,9 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
     ///
     /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(500);
     /// ```
-    pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+    pub fn expected_items(self, expected_num_items: usize) -> BloomFilter<S> {
         let num_bits = optimal_size(expected_num_items as f64, self.desired_fp_rate);
-        BloomFilter::new_builder::<BLOCK_SIZE_BITS>(num_bits)
+        BloomFilter::new_builder(num_bits)
             .hasher(self.hasher)
             .expected_items(expected_num_items)
     }
@@ -233,58 +243,13 @@ impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher>
     pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
         self,
         items: I,
-    ) -> BloomFilter<BLOCK_SIZE_BITS, S> {
+    ) -> BloomFilter<S> {
         let into_iter = items.into_iter();
         let mut filter = self.expected_items(into_iter.len());
         filter.extend(into_iter);
         filter
     }
 }
-
-macro_rules! impl_builder_block_size {
-    ($($size:literal = $fn_name:ident),* $(,)*) => (
-        $(
-            impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithFalsePositiveRate<BLOCK_SIZE_BITS, S> {
-                #[doc = concat!("Set the block size of the Bloom filter to ", stringify!($size), " bits.")]
-                #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
-                #[doc = "# Example"]
-                #[doc = "```"]
-                #[doc = "use fastbloom::BloomFilter;"]
-                #[doc = concat!("let builder = BloomFilter::with_false_pos(0.01).block_size_", stringify!($size), "();")]
-                #[doc = "```"]
-                pub fn $fn_name(self) -> BuilderWithFalsePositiveRate<$size, S> {
-                    BuilderWithFalsePositiveRate::<$size, S> {
-                        desired_fp_rate: self.desired_fp_rate,
-                        hasher: self.hasher,
-                    }
-                }
-            }
-
-            impl<const BLOCK_SIZE_BITS: usize, S: BuildHasher> BuilderWithBits<BLOCK_SIZE_BITS, S> {
-                #[doc = concat!("Set the block size of the Bloom filter to ", stringify!($size), " bits.")]
-                #[doc = concat!("The underlying bit vector size will be rounded up to be a multiple of the block size.")]
-                #[doc = "# Example"]
-                #[doc = "```"]
-                #[doc = "use fastbloom::BloomFilter;"]
-                #[doc = concat!("let builder = BloomFilter::with_num_bits(1000).block_size_", stringify!($size), "();")]
-                #[doc = "```"]
-                pub fn $fn_name(self) -> BuilderWithBits<$size, S> {
-                    BuilderWithBits::<$size, S> {
-                        data: self.data,
-                        hasher: self.hasher,
-                    }
-                }
-            }
-        )*
-    )
-}
-
-impl_builder_block_size!(
-    64 = block_size_64,
-    128 = block_size_128,
-    256 = block_size_256,
-    512 = block_size_512,
-);
 
 #[cfg(test)]
 mod for_accuracy_tests {
@@ -310,28 +275,6 @@ mod for_accuracy_tests {
             assert_eq!(
                 num_hashes,
                 BloomFilter::with_num_bits(1)
-                    .block_size_512()
-                    .hashes(num_hashes)
-                    .num_hashes()
-            );
-            assert_eq!(
-                num_hashes,
-                BloomFilter::with_num_bits(1)
-                    .block_size_256()
-                    .hashes(num_hashes)
-                    .num_hashes()
-            );
-            assert_eq!(
-                num_hashes,
-                BloomFilter::with_num_bits(1)
-                    .block_size_128()
-                    .hashes(num_hashes)
-                    .num_hashes()
-            );
-            assert_eq!(
-                num_hashes,
-                BloomFilter::with_num_bits(1)
-                    .block_size_64()
                     .hashes(num_hashes)
                     .num_hashes()
             );
@@ -345,6 +288,6 @@ mod for_size_tests {
 
     #[test]
     fn test_size() {
-        let _: BloomFilter<512> = BloomFilter::new_with_false_pos(0.0001).expected_items(10000);
+        let _: BloomFilter = BloomFilter::new_with_false_pos(0.0001).expected_items(10000);
     }
 }
