@@ -66,10 +66,10 @@ fastbloom is blazingly fast because it efficiently derives many index bits from 
 
 ## Speed
 
-![speed_non_member](https://github.com/user-attachments/assets/c0932c58-9b4f-4305-9115-99692448b6f6)
-![speed_member](https://github.com/user-attachments/assets/d7e6f69c-9b5f-44c2-9bb3-486e778e451e)
+![perf-non-member](https://github.com/user-attachments/assets/b785160e-ed94-4035-9c2a-cb8d55be39d3)
+![perf-member](https://github.com/user-attachments/assets/c06e12ff-8193-4784-8e26-b6dabf27de19)
 > Hashers used:
-> - xxhash: sbbf, fastbloom-rs
+> - xxhash: sbbf
 > - Sip1-3: bloom, bloomfilter, probabilistic-collections
 > - ahash: fastbloom
 > 
@@ -79,8 +79,9 @@ fastbloom is blazingly fast because it efficiently derives many index bits from 
 
 fastbloom does not compromise accuracy. Below is a comparison of false positive rates with other Bloom filter crates:
 
-![fp_micro](https://github.com/user-attachments/assets/c5dc2801-87ed-4d25-a970-90544fcd39d5)
-![fp_macro](https://github.com/user-attachments/assets/8e933289-3ba9-49c5-884e-a97d2efc978c)
+![fp-micro](https://github.com/user-attachments/assets/6e14380a-6dac-47c6-baf6-f98b797970c5)
+![fp-macro](https://github.com/user-attachments/assets/eb28584c-e0c3-4602-9044-a3f83b03dae7)
+
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
