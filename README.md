@@ -21,7 +21,7 @@ Due to a different (improved!) algorithm in 0.12.x, `BloomFilter`s have incompat
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.12.0"
+fastbloom = "0.12.1"
 ```
 Basic usage:
 ```rust

@@ -25,7 +25,7 @@ impl BlockedBitVec {
     }
 
     #[inline]
-    pub const fn set(&mut self, index: usize, hash: u64) -> bool {
+    pub fn set(&mut self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
         let previously_contained = self.bits[index] & bit > 0;
         self.bits[index] |= bit;
