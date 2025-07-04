@@ -9,23 +9,23 @@ const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BlockedBitVec {
+pub(crate) struct BlockedBitVec {
     bits: Box<[u64]>,
 }
 
 impl BlockedBitVec {
     #[inline]
-    pub const fn len(&self) -> usize {
+    pub(crate) const fn len(&self) -> usize {
         self.bits.len()
     }
 
     #[inline]
-    pub const fn num_bits(&self) -> usize {
+    pub(crate) const fn num_bits(&self) -> usize {
         self.len() * u64::BITS as usize
     }
 
     #[inline]
-    pub fn set(&mut self, index: usize, hash: u64) -> bool {
+    pub(crate) fn set(&mut self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
         let previously_contained = self.bits[index] & bit > 0;
         self.bits[index] |= bit;
@@ -33,18 +33,18 @@ impl BlockedBitVec {
     }
 
     #[inline]
-    pub const fn check(&self, index: usize, hash: u64) -> bool {
+    pub(crate) const fn check(&self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
         self.bits[index] & bit > 0
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[u64] {
+    pub(crate) fn as_slice(&self) -> &[u64] {
         &self.bits
     }
 
     #[inline]
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         for i in 0..self.bits.len() {
             self.bits[i] = 0;
         }
