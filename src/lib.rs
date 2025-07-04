@@ -1,4 +1,5 @@
 #![allow(rustdoc::bare_urls)]
+#![warn(unreachable_pub)]
 #![doc = include_str!("../README.md")]
 
 use std::hash::{BuildHasher, Hash, Hasher};
