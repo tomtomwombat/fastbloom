@@ -1,6 +1,6 @@
 use crate::{BloomFilter, BuildHasher, DefaultHasher};
-use std::f64::consts::LN_2;
-use std::hash::Hash;
+use alloc::vec::Vec;
+use core::{f64::consts::LN_2, hash::Hash};
 
 /// A Bloom filter builder with an immutable number of bits.
 ///
@@ -146,7 +146,7 @@ impl<S: BuildHasher> BuilderWithBits<S> {
 fn optimal_size(items_count: f64, fp_p: f64) -> usize {
     let log2_2 = LN_2 * LN_2;
     let result = 8 * ((items_count) * f64::ln(fp_p) / (-8.0 * log2_2)).ceil() as usize;
-    std::cmp::max(result, 512)
+    core::cmp::max(result, 512)
 }
 
 /// A Bloom filter builder with an immutable false positive rate.

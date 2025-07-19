@@ -1,5 +1,5 @@
+use core::hash::{BuildHasher, Hasher};
 use siphasher::sip::SipHasher13;
-use std::hash::{BuildHasher, Hasher};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -127,8 +127,9 @@ impl Hasher for RandomDefaultHasher {
 #[cfg(test)]
 mod test {
     use crate::hasher::RandomDefaultHasher;
+    use core::hash::Hasher;
     use siphasher::sip::SipHasher13;
-    use std::hash::Hasher;
+
     fn hash_all(mut x: impl Hasher) -> u64 {
         x.write(&[1; 16]);
         x.write_u8(1);

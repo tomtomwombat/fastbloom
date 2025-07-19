@@ -1,8 +1,12 @@
 #![allow(rustdoc::bare_urls)]
 #![warn(unreachable_pub)]
 #![doc = include_str!("../README.md")]
+#![no_std]
 
-use std::hash::{BuildHasher, Hash, Hasher};
+extern crate alloc;
+use alloc::vec::Vec;
+use core::hash::{BuildHasher, Hash, Hasher};
+use core::iter::repeat;
 mod hasher;
 pub use hasher::DefaultHasher;
 mod builder;
@@ -62,7 +66,7 @@ impl BloomFilter {
         // let num_u64s = num_bits.div_ceil(64);
         let num_u64s = (num_bits + 64 - 1) / 64;
         BuilderWithBits {
-            data: vec![0; num_u64s],
+            data: repeat(0).take(num_u64s).collect(),
             hasher: Default::default(),
         }
     }
@@ -308,6 +312,7 @@ fn next_hash(h1: &mut u64, h2: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
     use rand::{rngs::StdRng, Rng, SeedableRng};
 
     trait Seeded: BuildHasher {
@@ -525,7 +530,7 @@ mod tests {
             let mut rng = StdRng::seed_from_u64(524323);
             let mut h1 = rng.random_range(0..u64::MAX);
             let h2 = rng.random_range(0..u64::MAX);
-            let mut seeded_hash_counts = vec![0; size];
+            let mut seeded_hash_counts: Vec<_> = repeat(0).take(size).collect();
             for _ in 0..(size * 10_000) {
                 let hi = next_hash(&mut h1, h2);
                 seeded_hash_counts[(hi as usize) % size] += 1;
@@ -568,8 +573,8 @@ mod tests {
     #[test]
     fn eq_constructors_from_vec() {
         assert_eq!(
-            BloomFilter::from_vec(vec![42; 42]),
-            BloomFilter::new_from_vec(vec![42; 42]),
+            BloomFilter::from_vec(repeat(42).take(42).collect()),
+            BloomFilter::new_from_vec(repeat(42).take(42).collect()),
         );
     }
 

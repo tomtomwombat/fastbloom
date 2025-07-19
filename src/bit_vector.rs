@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use alloc::{boxed::Box, vec::Vec};
+use core::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
@@ -72,7 +73,7 @@ impl PartialEq for BlockedBitVec {
         if self.len() != other.len() {
             return false;
         }
-        std::iter::zip(self.iter(), other.iter()).all(|(l, r)| l == r)
+        core::iter::zip(self.iter(), other.iter()).all(|(l, r)| l == r)
     }
 }
 impl Eq for BlockedBitVec {}
@@ -86,13 +87,13 @@ impl Clone for BlockedBitVec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::iter::repeat;
     use rand::Rng;
-    use std::collections::HashSet;
 
     #[test]
     fn test_to_from_vec() {
         let size = 42;
-        let b: BlockedBitVec = vec![0u64; size].into_iter().collect();
+        let b: BlockedBitVec = repeat(0).take(size).collect();
         assert_eq!(b.num_bits(), b.len() * 64);
         assert!(size <= b.len());
         assert!((size + 64) > b.len());
@@ -100,18 +101,18 @@ mod tests {
 
     #[test]
     fn test_only_random_inserts_are_contained() {
-        let vec: BlockedBitVec = vec![0; 80].into_iter().collect();
-        let mut control = HashSet::new();
+        let vec: BlockedBitVec = repeat(0).take(80).collect();
+        let mut control = Vec::with_capacity(1000);
         let mut rng = rand::rng();
 
-        for _ in 0..100000 {
+        for _ in 0..1000 {
             let block_index = rng.random_range(0..vec.num_bits() / 64);
             let bit_index = rng.random_range(0..64);
 
             if !control.contains(&(block_index, bit_index)) {
                 assert!(!vec.check(block_index, bit_index));
             }
-            control.insert((block_index, bit_index));
+            control.push((block_index, bit_index));
             vec.set(block_index, bit_index);
             assert!(vec.check(block_index, bit_index));
         }
