@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
 /// u64's are used to store 64 bits, so the index ranges from 0 to 63.
@@ -7,10 +9,10 @@ const BIT_MASK_LEN: u32 = u32::ilog2(u64::BITS);
 const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 
 /// A bit vector partitioned in to `u64` blocks.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct BlockedBitVec {
-    bits: Box<[u64]>,
+    bits: Box<[AtomicU64]>,
 }
 
 impl BlockedBitVec {
@@ -25,41 +27,59 @@ impl BlockedBitVec {
     }
 
     #[inline]
-    pub(crate) fn set(&mut self, index: usize, hash: u64) -> bool {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = u64> + '_ {
+        self.bits.iter().map(|x| x.load(Relaxed))
+    }
+
+    #[inline(always)]
+    pub(crate) fn set(&self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
-        let previously_contained = self.bits[index] & bit > 0;
-        self.bits[index] |= bit;
+        let previously_contained = self.bits[index].load(Relaxed) & bit > 0;
+        self.bits[index].fetch_or(bit, Relaxed);
         previously_contained
     }
 
-    #[inline]
-    pub(crate) const fn check(&self, index: usize, hash: u64) -> bool {
+    #[inline(always)]
+    pub(crate) fn check(&self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
-        self.bits[index] & bit > 0
-    }
-
-    #[inline]
-    pub(crate) fn as_slice(&self) -> &[u64] {
-        &self.bits
+        self.bits[index].load(Relaxed) & bit > 0
     }
 
     #[inline]
     pub(crate) fn clear(&mut self) {
         for i in 0..self.bits.len() {
-            self.bits[i] = 0;
+            self.bits[i].store(0, Relaxed);
         }
     }
 }
 
-impl From<Vec<u64>> for BlockedBitVec {
-    fn from(mut bits: Vec<u64>) -> Self {
-        let num_u64s_per_block = 1;
-        let r = bits.len() % num_u64s_per_block;
-        if r != 0 {
-            bits.extend(vec![0; num_u64s_per_block - r]);
-        }
+impl FromIterator<AtomicU64> for BlockedBitVec {
+    fn from_iter<I: IntoIterator<Item = AtomicU64>>(iter: I) -> Self {
+        let mut bits = iter.into_iter().collect::<Vec<_>>();
         bits.shrink_to_fit();
         Self { bits: bits.into() }
+    }
+}
+
+impl FromIterator<u64> for BlockedBitVec {
+    fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
+        iter.into_iter().map(AtomicU64::new).collect()
+    }
+}
+
+impl PartialEq for BlockedBitVec {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        std::iter::zip(self.iter(), other.iter()).all(|(l, r)| l == r)
+    }
+}
+impl Eq for BlockedBitVec {}
+
+impl Clone for BlockedBitVec {
+    fn clone(&self) -> Self {
+        self.iter().collect()
     }
 }
 
@@ -72,15 +92,15 @@ mod tests {
     #[test]
     fn test_to_from_vec() {
         let size = 42;
-        let b: BlockedBitVec = vec![0u64; size].into();
-        assert_eq!(b.num_bits(), b.as_slice().len() * 64);
-        assert!(size <= b.as_slice().len());
-        assert!((size + 64) > b.as_slice().len());
+        let b: BlockedBitVec = vec![0u64; size].into_iter().collect();
+        assert_eq!(b.num_bits(), b.len() * 64);
+        assert!(size <= b.len());
+        assert!((size + 64) > b.len());
     }
 
     #[test]
     fn test_only_random_inserts_are_contained() {
-        let mut vec = BlockedBitVec::from(vec![0; 80]);
+        let vec: BlockedBitVec = vec![0; 80].into_iter().collect();
         let mut control = HashSet::new();
         let mut rng = rand::rng();
 

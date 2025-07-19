@@ -73,7 +73,7 @@ impl<S: BuildHasher> BuilderWithBits<S> {
     /// ```
     pub fn hashes(self, num_hashes: u32) -> BloomFilter<S> {
         BloomFilter {
-            bits: self.data.into(),
+            bits: self.data.into_iter().collect(),
             num_hashes,
             hasher: self.hasher,
         }
@@ -258,7 +258,6 @@ mod for_accuracy_tests {
     fn data_size() {
         let size_bits = 512 * 1000;
         let bloom = BloomFilter::with_num_bits(size_bits).hashes(4);
-        assert_eq!(bloom.as_slice().len() * 64, size_bits);
         assert_eq!(bloom.num_bits(), size_bits);
     }
 

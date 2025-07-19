@@ -120,7 +120,7 @@ impl BloomFilter {
     ///
     /// let orig = BloomFilter::with_false_pos(0.001).seed(&42).items([1, 2]);
     /// let num_hashes = orig.num_hashes();
-    /// let new = BloomFilter::from_vec(orig.as_slice().to_vec()).seed(&42).hashes(num_hashes);
+    /// let new = BloomFilter::from_vec(orig.iter().collect()).seed(&42).hashes(num_hashes);
     ///
     /// assert!(new.contains(&1));
     /// assert!(new.contains(&2));
@@ -147,7 +147,7 @@ impl<S: BuildHasher> BloomFilter<S> {
     /// assert!(bloom.contains(&2));
     /// ```
     #[inline]
-    pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
+    pub fn insert(&self, val: &(impl Hash + ?Sized)) -> bool {
         let source_hash = self.source_hash(val);
         self.insert_hash(source_hash)
     }
@@ -160,7 +160,7 @@ impl<S: BuildHasher> BloomFilter<S> {
     /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
     /// `false` otherwise.
     #[inline]
-    pub fn insert_hash(&mut self, hash: u64) -> bool {
+    pub fn insert_hash(&self, hash: u64) -> bool {
         let [mut h1, h2] = starting_hashes(hash);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
@@ -220,26 +220,16 @@ impl<S: BuildHasher> BloomFilter<S> {
         self.bits.num_bits()
     }
 
-    /// Returns a `u64` slice of this `BloomFilter`’s contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fastbloom::BloomFilter;
-    ///
-    /// let data = vec![0x517cc1b727220a95; 8];
-    /// let bloom = BloomFilter::from_vec(data.clone()).hashes(4);
-    /// assert_eq!(bloom.as_slice().to_vec(), data);
-    /// ```
-    #[inline]
-    pub fn as_slice(&self) -> &[u64] {
-        self.bits.as_slice()
-    }
-
     /// Clear all of the bits in the Bloom filter, removing all items.
     #[inline]
     pub fn clear(&mut self) {
         self.bits.clear();
+    }
+
+    /// Returns an iterator over the raw bit values of this Bloom filter.
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
+        self.bits.iter()
     }
 
     /// Returns the hash of `val` using this Bloom filter's hasher.
@@ -359,12 +349,13 @@ mod tests {
         fn to_from_(size: usize) {
             let mut b = BloomFilter::new_builder(size).seed(&1).hashes(3);
             b.extend(member_nums(1000));
-            let x = b.as_slice();
-            let b2 = BloomFilter::new_from_vec(x.to_vec()).seed(&1).hashes(3);
+            let b2 = BloomFilter::new_from_vec(b.iter().collect())
+                .seed(&1)
+                .hashes(3);
             assert_eq!(b, b2);
-            assert_eq!(b.num_bits(), b.as_slice().len() * 64);
-            assert!(size <= b.as_slice().len() * 64);
-            assert!((size + u64::BITS as usize) > b.as_slice().len() * 64);
+            assert_eq!(b.num_bits(), b.bits.len() * 64);
+            assert!(size <= b.bits.len() * 64);
+            assert!((size + u64::BITS as usize) > b.bits.len() * 64);
         }
         for size in 1..=10009 {
             to_from_(size);
@@ -373,7 +364,7 @@ mod tests {
 
     #[test]
     fn first_insert_false() {
-        let mut filter = BloomFilter::with_num_bits(1202).expected_items(4);
+        let filter = BloomFilter::with_num_bits(1202).expected_items(4);
         assert!(!filter.insert(&5));
     }
 
@@ -552,7 +543,10 @@ mod tests {
     #[test]
     fn test_clone() {
         let filter = BloomFilter::with_num_bits(4).hashes(4);
-        assert_eq!(filter, filter.clone());
+        let cloned = filter.clone();
+        assert_eq!(filter, cloned);
+        cloned.insert(&42);
+        assert!(filter != cloned);
     }
 
     #[test]
@@ -588,7 +582,7 @@ mod tests {
                     .expected_items(num);
                 b.extend(member_nums(num));
                 let orig_hashes = b.num_hashes();
-                let new = BloomFilter::from_vec(b.as_slice().to_vec())
+                let new = BloomFilter::from_vec(b.iter().collect())
                     .seed(&42)
                     .hashes(orig_hashes);
                 assert!(member_nums(num).all(|x| new.contains(&x)));
