@@ -150,6 +150,13 @@ impl<S: BuildHasher> BloomFilter<S> {
     /// bloom.insert(&2);
     /// assert!(bloom.contains(&2));
     /// ```
+    #[cfg(not(feature = "atomic"))]
+    #[inline]
+    pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
+        let source_hash = self.source_hash(val);
+        self.insert_hash(source_hash)
+    }
+    #[cfg(feature = "atomic")]
     #[inline]
     pub fn insert(&self, val: &(impl Hash + ?Sized)) -> bool {
         let source_hash = self.source_hash(val);
@@ -163,6 +170,20 @@ impl<S: BuildHasher> BloomFilter<S> {
     ///
     /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
     /// `false` otherwise.
+    #[cfg(not(feature = "atomic"))]
+    #[inline]
+    pub fn insert_hash(&mut self, hash: u64) -> bool {
+        let [mut h1, h2] = starting_hashes(hash);
+        let mut previously_contained = true;
+        for _ in 0..self.num_hashes {
+            // Set bits the traditional way--1 bit per composed hash
+            let index = block_index(self.bits.len(), h1);
+            let h = next_hash(&mut h1, h2);
+            previously_contained &= self.bits.set(index, h);
+        }
+        previously_contained
+    }
+    #[cfg(feature = "atomic")]
     #[inline]
     pub fn insert_hash(&self, hash: u64) -> bool {
         let [mut h1, h2] = starting_hashes(hash);
@@ -225,8 +246,14 @@ impl<S: BuildHasher> BloomFilter<S> {
     }
 
     /// Clear all of the bits in the Bloom filter, removing all items.
+    #[cfg(not(feature = "atomic"))]
     #[inline]
     pub fn clear(&mut self) {
+        self.bits.clear();
+    }
+    #[cfg(feature = "atomic")]
+    #[inline]
+    pub fn clear(&self) {
         self.bits.clear();
     }
 
@@ -234,6 +261,28 @@ impl<S: BuildHasher> BloomFilter<S> {
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
         self.bits.iter()
+    }
+
+    /// Returns a `u64` slice of this `BloomFilter`’s contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let data = [0x517cc1b727220a95; 8];
+    /// let bloom = BloomFilter::from_vec(data.to_vec()).hashes(4);
+    /// assert_eq!(bloom.as_slice(), data);
+    /// ```
+    #[cfg(not(feature = "atomic"))]
+    #[inline]
+    pub fn as_slice(&self) -> &[u64] {
+        self.bits.as_slice()
+    }
+    #[cfg(feature = "atomic")]
+    #[inline]
+    pub fn as_slice(&self) -> &[core::sync::atomic::AtomicU64] {
+        self.bits.as_slice()
     }
 
     /// Returns the hash of `val` using this Bloom filter's hasher.
@@ -309,6 +358,7 @@ fn next_hash(h1: &mut u64, h2: u64) -> u64 {
     *h1
 }
 
+#[allow(unused_mut)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -369,7 +419,7 @@ mod tests {
 
     #[test]
     fn first_insert_false() {
-        let filter = BloomFilter::with_num_bits(1202).expected_items(4);
+        let mut filter = BloomFilter::with_num_bits(1202).expected_items(4);
         assert!(!filter.insert(&5));
     }
 
@@ -548,7 +598,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let filter = BloomFilter::with_num_bits(4).hashes(4);
-        let cloned = filter.clone();
+        let mut cloned = filter.clone();
         assert_eq!(filter, cloned);
         cloned.insert(&42);
         assert!(filter != cloned);

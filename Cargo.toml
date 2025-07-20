@@ -17,6 +17,7 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = ["rand"]
+atomic = []
 rand = ["dep:rand"]
 serde = ["dep:serde", "siphasher/serde_std"]
 

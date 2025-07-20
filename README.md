@@ -88,8 +88,8 @@ fastbloom does not compromise accuracy. Below is a comparison of false positive 
 ## Available Features
 
 - **`rand`** - Enabled by default, this has the `DefaultHasher` source its random state using `thread_rng()` instead of hardware sources. Getting entropy from a user-space source is considerably faster, but requires additional dependencies to achieve this. Disabling this feature by using `default-features = false` makes `DefaultHasher` source its entropy using `getrandom`, which will have a much simpler code footprint at the expense of speed.
-
 - **`serde`** - `BloomFilter`s implement `Serialize` and `Deserialize` when possible.
+- **`atomic`** - Insert and contains operations on `BloomFilter`s are atomic and take `&self`, so you can wrap it in `Arc` and update it concurrently without locks.
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)

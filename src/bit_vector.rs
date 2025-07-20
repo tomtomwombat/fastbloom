@@ -1,4 +1,5 @@
 use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "atomic")]
 use core::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
 /// The number of bits in the bit mask that is used to index a u64's bits.
@@ -9,11 +10,16 @@ const BIT_MASK_LEN: u32 = u32::ilog2(u64::BITS);
 /// Gets 6 last bits from the bit index, which are used to index a u64's bits.
 const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 
+#[cfg(not(feature = "atomic"))]
+type BitStorage = u64;
+#[cfg(feature = "atomic")]
+type BitStorage = AtomicU64;
+
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct BlockedBitVec {
-    bits: Box<[AtomicU64]>,
+    bits: Box<[BitStorage]>,
 }
 
 impl BlockedBitVec {
@@ -27,44 +33,86 @@ impl BlockedBitVec {
         self.len() * u64::BITS as usize
     }
 
-    #[inline]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = u64> + '_ {
-        self.bits.iter().map(|x| x.load(Relaxed))
+    #[inline(always)]
+    pub(crate) fn as_slice(&self) -> &[BitStorage] {
+        &self.bits
     }
 
-    #[inline(always)]
-    pub(crate) fn set(&self, index: usize, hash: u64) -> bool {
-        let bit = 1u64 << (hash & BIT_MASK);
-        let previously_contained = self.bits[index].load(Relaxed) & bit > 0;
-        self.bits[index].fetch_or(bit, Relaxed);
-        previously_contained
+    #[inline]
+    pub(crate) fn iter(&self) -> impl Iterator<Item = u64> + '_ {
+        self.bits.iter().map(fetch)
     }
 
     #[inline(always)]
     pub(crate) fn check(&self, index: usize, hash: u64) -> bool {
         let bit = 1u64 << (hash & BIT_MASK);
-        self.bits[index].load(Relaxed) & bit > 0
+        fetch(&self.bits[index]) & bit > 0
     }
 
+    #[cfg(not(feature = "atomic"))]
+    #[inline(always)]
+    pub(crate) fn set(&mut self, index: usize, hash: u64) -> bool {
+        let bit = 1u64 << (hash & BIT_MASK);
+        let previously_contained = fetch(&self.bits[index]) & bit > 0;
+        self.bits[index] |= bit;
+        previously_contained
+    }
+
+    #[cfg(feature = "atomic")]
+    #[inline(always)]
+    pub(crate) fn set(&self, index: usize, hash: u64) -> bool {
+        let bit = 1u64 << (hash & BIT_MASK);
+        let previously_contained = fetch(&self.bits[index]) & bit > 0;
+        self.bits[index].fetch_or(bit, Relaxed);
+        previously_contained
+    }
+
+    #[cfg(feature = "atomic")]
+    #[inline]
+    pub(crate) fn clear(&self) {
+        for i in 0..self.len() {
+            self.bits[i].store(0, Relaxed);
+        }
+    }
+
+    #[cfg(not(feature = "atomic"))]
     #[inline]
     pub(crate) fn clear(&mut self) {
-        for i in 0..self.bits.len() {
-            self.bits[i].store(0, Relaxed);
+        for i in 0..self.len() {
+            self.bits[i] = 0;
         }
     }
 }
 
-impl FromIterator<AtomicU64> for BlockedBitVec {
-    fn from_iter<I: IntoIterator<Item = AtomicU64>>(iter: I) -> Self {
-        let mut bits = iter.into_iter().collect::<Vec<_>>();
-        bits.shrink_to_fit();
-        Self { bits: bits.into() }
-    }
+#[cfg(not(feature = "atomic"))]
+#[inline(always)]
+fn fetch(x: &BitStorage) -> u64 {
+    *x
+}
+
+#[cfg(feature = "atomic")]
+#[inline(always)]
+fn fetch(x: &BitStorage) -> u64 {
+    x.load(Relaxed)
+}
+
+#[cfg(not(feature = "atomic"))]
+#[inline(always)]
+fn new(x: u64) -> BitStorage {
+    x
+}
+
+#[cfg(feature = "atomic")]
+#[inline(always)]
+fn new(x: u64) -> BitStorage {
+    BitStorage::new(x)
 }
 
 impl FromIterator<u64> for BlockedBitVec {
     fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
-        iter.into_iter().map(AtomicU64::new).collect()
+        let mut bits = iter.into_iter().map(new).collect::<Vec<_>>();
+        bits.shrink_to_fit();
+        Self { bits: bits.into() }
     }
 }
 
@@ -84,6 +132,7 @@ impl Clone for BlockedBitVec {
     }
 }
 
+#[allow(unused_mut)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_only_random_inserts_are_contained() {
-        let vec: BlockedBitVec = repeat(0).take(80).collect();
+        let mut vec: BlockedBitVec = repeat(0).take(80).collect();
         let mut control = Vec::with_capacity(1000);
         let mut rng = rand::rng();
 
