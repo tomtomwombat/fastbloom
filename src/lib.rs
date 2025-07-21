@@ -1,7 +1,7 @@
 #![allow(rustdoc::bare_urls)]
 #![warn(unreachable_pub)]
 #![doc = include_str!("../README.md")]
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 use alloc::vec::Vec;
@@ -13,6 +13,10 @@ mod builder;
 pub use builder::{BuilderWithBits, BuilderWithFalsePositiveRate};
 mod bit_vector;
 use bit_vector::BlockedBitVec;
+mod number;
+
+#[cfg(all(feature = "loom", feature = "serde"))]
+compile_error!("features `loom` and `serde` are mutually exclusive");
 
 /// A space efficient approximate membership set data structure.
 /// False positives from [`contains`](Self::contains) are possible, but false negatives
@@ -197,6 +201,23 @@ impl<S: BuildHasher> BloomFilter<S> {
         previously_contained
     }
 
+    /// Inserts all the items in `iter` into the `self`.
+    #[cfg(not(feature = "atomic"))]
+    #[inline]
+    pub fn insert_all<T: Hash, I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for val in iter {
+            self.insert(&val);
+        }
+    }
+    /// Inserts all the items in `iter` into the `self`. Immutable version of [`Self::extend`].
+    #[cfg(feature = "atomic")]
+    #[inline]
+    pub fn insert_all<T: Hash, I: IntoIterator<Item = T>>(&self, iter: I) {
+        for val in iter {
+            self.insert(&val);
+        }
+    }
+
     /// Checks if an element is possibly in the Bloom filter.
     ///
     /// # Returns
@@ -263,25 +284,9 @@ impl<S: BuildHasher> BloomFilter<S> {
         self.bits.iter()
     }
 
-    /// Returns a `u64` slice of this `BloomFilter`’s contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fastbloom::BloomFilter;
-    ///
-    /// let data = [0x517cc1b727220a95; 8];
-    /// let bloom = BloomFilter::from_vec(data.to_vec()).hashes(4);
-    /// assert_eq!(bloom.as_slice(), data);
-    /// ```
-    #[cfg(not(feature = "atomic"))]
+    /// Returns the underlying slice of this `BloomFilter`'s bit contents.
     #[inline]
-    pub fn as_slice(&self) -> &[u64] {
-        self.bits.as_slice()
-    }
-    #[cfg(feature = "atomic")]
-    #[inline]
-    pub fn as_slice(&self) -> &[core::sync::atomic::AtomicU64] {
+    pub fn as_slice(&self) -> &[crate::number::BitStorage] {
         self.bits.as_slice()
     }
 
@@ -359,6 +364,7 @@ fn next_hash(h1: &mut u64, h2: u64) -> u64 {
 }
 
 #[allow(unused_mut)]
+#[cfg(not(feature = "loom"))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -664,5 +670,35 @@ mod tests {
                 assert_eq!(before, after);
             }
         }
+    }
+}
+
+#[cfg(feature = "loom")]
+#[cfg(test)]
+mod loom_tests {
+    use super::*;
+
+    #[test]
+    fn test_loom() {
+        loom::model(|| {
+            let b = loom::sync::Arc::new(BloomFilter::with_num_bits(128).seed(&42).hashes(2));
+            let expected = BloomFilter::with_num_bits(128).seed(&42).hashes(2);
+            expected.insert_all(1..=3);
+
+            let handles: Vec<_> = [(1..=2), (2..=3)]
+                .into_iter()
+                .map(|data| {
+                    let v = b.clone();
+                    loom::thread::spawn(move || v.insert_all(data))
+                })
+                .collect();
+
+            for handle in handles {
+                handle.join().unwrap();
+            }
+
+            let res = b.iter().collect::<Vec<_>>();
+            assert_eq!(res, expected.iter().collect::<Vec<_>>());
+        });
     }
 }

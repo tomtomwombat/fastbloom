@@ -40,6 +40,12 @@ jobs:
       with:
         verbose: true
         fail_ci_if_error: true
+    - name: Install cargo-hack
+      run: cargo install cargo-hack
+    - name: Run tests
+      run: cargo hack test --verbose --feature-powerset --exclude-features loom
+    - name: Run loom
+      run: cargo hack test loom --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
 
   msrv:
     runs-on: ubuntu-latest

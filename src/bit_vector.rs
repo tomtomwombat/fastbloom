@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, vec::Vec};
 #[cfg(feature = "atomic")]
-use core::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use core::sync::atomic::Ordering::Relaxed;
 
 /// The number of bits in the bit mask that is used to index a u64's bits.
 ///
@@ -10,13 +10,11 @@ const BIT_MASK_LEN: u32 = u32::ilog2(u64::BITS);
 /// Gets 6 last bits from the bit index, which are used to index a u64's bits.
 const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
 
-#[cfg(not(feature = "atomic"))]
-type BitStorage = u64;
-#[cfg(feature = "atomic")]
-type BitStorage = AtomicU64;
+use crate::number::*;
 
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Debug)]
+#[cfg_attr(not(feature = "atomic"), derive(Clone))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct BlockedBitVec {
     bits: Box<[BitStorage]>,
@@ -84,30 +82,6 @@ impl BlockedBitVec {
     }
 }
 
-#[cfg(not(feature = "atomic"))]
-#[inline(always)]
-fn fetch(x: &BitStorage) -> u64 {
-    *x
-}
-
-#[cfg(feature = "atomic")]
-#[inline(always)]
-fn fetch(x: &BitStorage) -> u64 {
-    x.load(Relaxed)
-}
-
-#[cfg(not(feature = "atomic"))]
-#[inline(always)]
-fn new(x: u64) -> BitStorage {
-    x
-}
-
-#[cfg(feature = "atomic")]
-#[inline(always)]
-fn new(x: u64) -> BitStorage {
-    BitStorage::new(x)
-}
-
 impl FromIterator<u64> for BlockedBitVec {
     fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
         let mut bits = iter.into_iter().map(new).collect::<Vec<_>>();
@@ -126,6 +100,7 @@ impl PartialEq for BlockedBitVec {
 }
 impl Eq for BlockedBitVec {}
 
+#[cfg(feature = "atomic")]
 impl Clone for BlockedBitVec {
     fn clone(&self) -> Self {
         self.iter().collect()
