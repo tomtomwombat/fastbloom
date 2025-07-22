@@ -17,9 +17,8 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = ["std", "rand"]
-atomic = []
 std = []
-loom = ["atomic", "dep:loom"]
+loom = ["dep:loom"]
 rand = ["dep:rand"]
 serde = ["dep:serde", "siphasher/serde_std"]
 
@@ -34,4 +33,4 @@ libm = "0.2"
 [dev-dependencies]
 ahash = "0.8.12"
 rand = "0.9"
-serde_json = "1.0"
+serde_cbor = "0.11.2"
