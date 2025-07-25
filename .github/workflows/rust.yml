@@ -55,4 +55,9 @@ jobs:
         with:
           toolchain: "1.70"
           override: true
-      - run: cargo check --lib --all-features
+      - name: Install cargo-hack
+        run: cargo install cargo-hack
+      - name: Run tests
+        run: cargo hack test --verbose --feature-powerset --exclude-features loom
+      - name: Run loom
+        run: cargo hack test loom --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
