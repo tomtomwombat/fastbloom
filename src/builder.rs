@@ -6,14 +6,14 @@ macro_rules! builder_with_bits {
     ($name:ident, $bloom:ident) => {
         /// A Bloom filter builder with an immutable number of bits.
         ///
-        /// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
+        #[doc = concat!("This type can be used to construct an instance of [`", stringify!($bloom), "`] via the builder pattern.")]
         ///
         /// # Examples
         /// ```
-        /// use fastbloom::BloomFilter;
+        #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
         ///
-        /// let builder = BloomFilter::with_num_bits(1024);
-        /// let builder = BloomFilter::from_vec(vec![0; 8]);
+        #[doc = concat!("let builder = ", stringify!($bloom), "::with_num_bits(1024);")]
+        #[doc = concat!("let builder = ", stringify!($bloom), "::from_vec(vec![0; 8]);")]
         /// ```
         #[derive(Debug, Clone)]
         pub struct $name<S = DefaultHasher> {
@@ -29,15 +29,15 @@ macro_rules! builder_with_bits {
         impl<S: BuildHasher> Eq for $name<S> {}
 
         impl $name {
-            /// Sets the seed for this builder. The later constructed [`BloomFilter`]
+            /// Sets the seed for this builder. The later constructed Bloom filter
             /// will use this seed when hashing items.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).seed(&1).hashes(4);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).seed(&1).hashes(4);")]
             /// ```
             pub fn seed(mut self, seed: &u128) -> Self {
                 self.hasher = DefaultHasher::seeded(&seed.to_be_bytes());
@@ -46,16 +46,16 @@ macro_rules! builder_with_bits {
         }
 
         impl<S: BuildHasher> $name<S> {
-            /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
+            /// Sets the hasher for this builder. The later constructed Bloom filter will use
             /// this hasher when inserting and checking items.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             /// use ahash::RandomState;
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).hasher(RandomState::default()).hashes(4);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).hasher(RandomState::default()).hashes(4);")]
             /// ```
             pub fn hasher<H: BuildHasher>(self, hasher: H) -> $name<H> {
                 $name::<H> {
@@ -65,13 +65,13 @@ macro_rules! builder_with_bits {
             }
 
             /// "Consumes" this builder, using the provided `num_hashes` to return an
-            /// empty [`BloomFilter`].
+            #[doc = concat!("empty [`", stringify!($bloom), "`].")]
             ///
             /// # Examples
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).hashes(4);")]
             /// ```
             pub fn hashes(self, num_hashes: u32) -> $bloom<S> {
                 $bloom {
@@ -82,33 +82,33 @@ macro_rules! builder_with_bits {
             }
 
             /// "Consumes" this builder, using the provided `expected_num_items` to return an
-            /// empty [`BloomFilter`]. The number of hashes is optimized based on `expected_num_items`
-            /// to maximize Bloom filter accuracy (minimize false positives chance on [`BloomFilter::contains`]).
-            /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
+            #[doc = concat!("empty [`", stringify!($bloom), "`]. The number of hashes is optimized based on `expected_num_items`")]
+            #[doc = concat!("to maximize Bloom filter accuracy (minimize false positives chance on [`", stringify!($bloom), "::contains`]).")]
+            /// More or less than `expected_num_items` may be inserted into Bloom filter.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).expected_items(500);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).expected_items(500);")]
             /// ```
             pub fn expected_items(self, expected_num_items: usize) -> $bloom<S> {
                 let num_hashes = optimal_hashes_f(self.data.len(), expected_num_items);
                 self.hashes(num_hashes as u32)
             }
 
-            /// "Consumes" this builder and constructs a [`BloomFilter`] containing
-            /// all values in `items`. Like [`BuilderWithBits::expected_items`], the number of hashes per item
+            #[doc = concat!("\"Consumes\" this builder and constructs a [`", stringify!($bloom), "`] containing")]
+            /// all values in `items`. The number of hashes per item
             /// is optimized based on `items.len()` to maximize Bloom filter accuracy
-            /// (minimize false positives chance on [`BloomFilter::contains`]).
+            #[doc = concat!("(minimize false positives chance on [`", stringify!($bloom), "::contains`]).")]
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).items([1, 2, 3]);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).items([1, 2, 3]);")]
             /// ```
             pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
                 self,
@@ -135,9 +135,9 @@ macro_rules! builder_with_fp {
         /// # Examples
         ///
         /// ```
-        /// use fastbloom::BloomFilter;
+        #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
         ///
-        /// let builder = BloomFilter::with_false_pos(0.01);
+        #[doc = concat!("let builder = ", stringify!($bloom), "::with_false_pos(0.01);")]
         /// ```
         #[derive(Debug, Clone)]
         pub struct $name<S = DefaultHasher> {
@@ -153,15 +153,15 @@ macro_rules! builder_with_fp {
         impl<S: BuildHasher> Eq for $name<S> {}
 
         impl $name {
-            /// Sets the seed for this builder. The later constructed [`BloomFilter`]
+            /// Sets the seed for this builder. The later constructed Bloom filter
             /// will use this seed when hashing items.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_false_pos(0.001).seed(&1).expected_items(100);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).seed(&1).expected_items(100);")]
             /// ```
             pub fn seed(mut self, seed: &u128) -> Self {
                 self.hasher = DefaultHasher::seeded(&seed.to_be_bytes());
@@ -170,16 +170,16 @@ macro_rules! builder_with_fp {
         }
 
         impl<S: BuildHasher> $name<S> {
-            /// Sets the hasher for this builder. The later constructed [`BloomFilter`] will use
+            #[doc = concat!("Sets the hasher for this builder. The later constructed [`", stringify!($bloom), "`] will use")]
             /// this hasher when inserting and checking items.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             /// use ahash::RandomState;
             ///
-            /// let bloom = BloomFilter::with_false_pos(0.001).hasher(RandomState::default()).expected_items(100);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).hasher(RandomState::default()).expected_items(100);")]
             /// ```
             pub fn hasher<H: BuildHasher>(self, hasher: H) -> $name<H> {
                 $name::<H> {
@@ -189,16 +189,16 @@ macro_rules! builder_with_fp {
             }
 
             /// "Consumes" this builder, using the provided `expected_num_items` to return an
-            /// empty [`BloomFilter`]. The number of hashes and underlying memory is optimized based on `expected_num_items`
-            /// to meet the desired false positive rate.
-            /// More or less than `expected_num_items` may be inserted into [`BloomFilter`].
+            #[doc = concat!("empty [`", stringify!($bloom), "`]. The number of hashes is optimized based on `expected_num_items`")]
+            #[doc = concat!("to maximize Bloom filter accuracy (minimize false positives chance on [`", stringify!($bloom), "::contains`]).")]
+            /// More or less than `expected_num_items` may be inserted into Bloom filter.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(500);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).expected_items(500);")]
             /// ```
             pub fn expected_items(self, expected_num_items: usize) -> $bloom<S> {
                 let num_bits = optimal_size(expected_num_items as f64, self.desired_fp_rate);
@@ -207,16 +207,16 @@ macro_rules! builder_with_fp {
                     .expected_items(expected_num_items)
             }
 
-            /// "Consumes" this builder and constructs a [`BloomFilter`] containing
-            /// all values in `items`. Like [`BuilderWithFalsePositiveRate::expected_items`], the number of hashes per item
-            /// and underlying memory is optimized based on `items.len()` to meet the desired false positive rate.
+            #[doc = concat!("\"Consumes\" this builder and constructs a [`", stringify!($bloom), "`] containing")]
+            /// all values in `items`. The number of hashes per item and underlying memory
+            /// is optimized based on `items.len()` to meet the desired false positive rate.
             ///
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            /// let bloom = BloomFilter::with_false_pos(0.001).items([1, 2, 3]);
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).items([1, 2, 3]);")]
             /// ```
             pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
                 self,

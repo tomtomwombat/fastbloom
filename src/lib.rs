@@ -27,7 +27,7 @@ pub(crate) use core::sync::atomic::AtomicU64;
 compile_error!("features `loom` and `serde` are mutually exclusive");
 
 macro_rules! impl_bloom {
-    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty) => {
+    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty, $ismut:literal) => {
         /// A space efficient approximate membership set data structure.
         /// False positives from [`contains`](Self::contains) are possible, but false negatives
         /// are not, i.e. [`contains`](Self::contains) for all items in the set is guaranteed to return
@@ -42,26 +42,26 @@ macro_rules! impl_bloom {
         /// # Examples
         /// Basic usage:
         /// ```rust
-        /// use fastbloom::BloomFilter;
+        #[doc = concat!("use fastbloom::", stringify!($name), ";")]
         ///
-        /// let mut filter = BloomFilter::with_num_bits(1024).expected_items(2);
+        #[doc = concat!("let ", $ismut, "filter = ", stringify!($name), "::with_num_bits(1024).expected_items(2);")]
         /// filter.insert("42");
         /// filter.insert("🦀");
         /// ```
         /// Instantiate with a target false positive rate:
         /// ```rust
-        /// use fastbloom::BloomFilter;
+        #[doc = concat!("use fastbloom::", stringify!($name), ";")]
         ///
-        /// let filter = BloomFilter::with_false_pos(0.001).items(["42", "🦀"]);
+        #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).items([\"42\", \"🦀\"]);")]
         /// assert!(filter.contains("42"));
         /// assert!(filter.contains("🦀"));
         /// ```
         /// Use any hasher:
         /// ```rust
-        /// use fastbloom::BloomFilter;
+        #[doc = concat!("use fastbloom::", stringify!($name), ";")]
         /// use ahash::RandomState;
         ///
-        /// let filter = BloomFilter::with_num_bits(1024)
+        #[doc = concat!("let filter = ", stringify!($name), "::with_num_bits(1024)")]
         ///     .hasher(RandomState::default())
         ///     .items(["42", "🦀"]);
         /// ```
@@ -101,44 +101,44 @@ macro_rules! impl_bloom {
                 }
             }
 
-            /// Creates a new instance of [`BuilderWithFalsePositiveRate`] to construct a Bloom filter with a target false positive rate of `fp`.
+            /// Creates a new builder instance to construct a [`Self`] with a target false positive rate of `fp`.
             /// The memory size of the underlying bit vector is dependent on the false positive rate and the expected number of items.
             /// # Panics
             /// Panics if the false positive rate, `fp`, is 0.
             ///
             /// # Examples
             /// ```
-            /// use fastbloom::BloomFilter;
-            /// let bloom = BloomFilter::with_false_pos(0.001).expected_items(1000);
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
+            #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).expected_items(1000);")]
             /// ```
             pub fn with_false_pos(fp: f64) -> $builder_fp {
                 $name::new_with_false_pos(fp)
             }
 
-            /// Creates a new instance of [`BuilderWithBits`] to construct a Bloom filter with `num_bits` number of bits for tracking item membership.
+            /// Creates a builder instance to construct a [`Self`] with `num_bits` number of bits for tracking item membership.
             /// # Panics
             /// Panics if the number of bits, `num_bits`, is 0.
             ///
             /// # Examples
             /// ```
-            /// use fastbloom::BloomFilter;
-            /// let bloom = BloomFilter::with_num_bits(1024).hashes(4);
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
+            #[doc = concat!("let filter = ", stringify!($name), "::with_num_bits(1024).hashes(4);")]
             /// ```
             pub fn with_num_bits(num_bits: usize) -> $builder_bits {
                 $name::new_builder(num_bits)
             }
 
-            /// Creates a new instance of [`BuilderWithBits`] to construct a `BloomFilter` initialized with bit vector `bit_vec`.
+            /// Creates a builder instance to construct a [`Self`] initialized with bit vector `bit_vec`.
             ///
             /// # Panics
             /// Panics if the bit vector, `bit_vec`, is empty.
             /// # Examples
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            /// let orig = BloomFilter::with_false_pos(0.001).seed(&42).items([1, 2]);
+            #[doc = concat!("let orig = ", stringify!($name), "::with_false_pos(0.001).seed(&42).items([1, 2]);")]
             /// let num_hashes = orig.num_hashes();
-            /// let new = BloomFilter::from_vec(orig.iter().collect()).seed(&42).hashes(num_hashes);
+            #[doc = concat!("let new = ", stringify!($name), "::from_vec(orig.iter().collect()).seed(&42).hashes(num_hashes);")]
             ///
             /// assert!(new.contains(&1));
             /// assert!(new.contains(&2));
@@ -158,9 +158,9 @@ macro_rules! impl_bloom {
             /// # Examples
             ///
             /// ```
-            /// use fastbloom::BloomFilter;
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            /// let bloom = BloomFilter::with_num_bits(1024).items([1, 2, 3]);
+            #[doc = concat!("let bloom = ", stringify!($name), "::with_num_bits(1024).items([1, 2, 3]);")]
             /// assert!(bloom.contains(&1));
             /// ```
             #[inline]
@@ -247,14 +247,16 @@ impl_bloom!(
     BuilderWithBits,
     BuilderWithFalsePositiveRate,
     BitVec,
-    u64
+    u64,
+    "mut "
 );
 impl_bloom!(
     AtomicBloomFilter,
     AtomicBuilderWithBits,
     AtomicBuilderWithFalsePositiveRate,
     AtomicBitVec,
-    AtomicU64
+    AtomicU64,
+    ""
 );
 
 impl<S: BuildHasher> BloomFilter<S> {
@@ -324,9 +326,9 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     ///
     /// # Examples
     /// ```
-    /// use fastbloom::BloomFilter;
+    /// use fastbloom::AtomicBloomFilter;
     ///
-    /// let mut bloom = BloomFilter::with_num_bits(1024).hashes(4);
+    /// let bloom = AtomicBloomFilter::with_num_bits(1024).hashes(4);
     /// bloom.insert(&2);
     /// assert!(bloom.contains(&2));
     /// ```
