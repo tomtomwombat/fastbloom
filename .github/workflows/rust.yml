@@ -46,7 +46,9 @@ jobs:
       run: cargo hack build --verbose --feature-powerset --exclude-features loom
     - name: Tests
       run: cargo hack test --verbose --feature-powerset --exclude-features loom
-    - name: Loom
+    - name: Loom build
+      run: cargo hack build --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
+    - name: Loom tests
       run: cargo hack test loom --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
 
   msrv:
