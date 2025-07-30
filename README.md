@@ -85,9 +85,7 @@ fastbloom is blazingly fast because it efficiently derives many index bits from 
 
 fastbloom does not compromise accuracy. Below is a comparison of false positive rates with other Bloom filter crates:
 
-![fp-micro](https://github.com/user-attachments/assets/6e14380a-6dac-47c6-baf6-f98b797970c5)
-![fp-macro](https://github.com/user-attachments/assets/eb28584c-e0c3-4602-9044-a3f83b03dae7)
-
+![fp](https://github.com/user-attachments/assets/473dc8f3-6501-4f3c-94e8-1f693d4efce1)
 
 [Benchmark source](https://github.com/tomtomwombat/bench-bloom-filters)
 
@@ -99,7 +97,7 @@ fastbloom does not compromise accuracy. Below is a comparison of false positive 
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
-- [Bloom Filter - Brilliant](https://brilliant.org/wiki/bloom-filter/)
+- [Bloom filters debunked: Dispelling 30 Years of bad math with Coq!](https://gopiandcode.uk/logs/log-bloomfilters-debunked.html)
 - [Bloom Filter Interactive Demonstration](https://www.jasondavies.com/bloomfilter/)
 - [Cache-, Hash- and Space-Efficient Bloom Filters](https://web.archive.org/web/20070623102632/http://algo2.iti.uni-karlsruhe.de/singler/publications/cacheefficientbloomfilters-wea2007.pdf)
 - [Less hashing, same performance: Building a better Bloom filter](https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf)
