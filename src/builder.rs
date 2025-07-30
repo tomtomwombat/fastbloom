@@ -239,18 +239,12 @@ builder_with_fp!(BuilderWithFalsePositiveRate, BloomFilter);
 builder_with_fp!(AtomicBuilderWithFalsePositiveRate, AtomicBloomFilter);
 
 /// The optimal number of hashes to perform for an item given the expected number of items in the bloom filter.
-/// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>.
+/// Proof: <https://gopiandcode.uk/logs/log-bloomfilters-debunked.html>.
 #[inline]
 fn optimal_hashes_f(num_u64s: usize, num_items: usize) -> u32 {
-    let num_u64s = (num_u64s * 64) as f64;
-    let hashes = LN_2 * num_u64s / num_items as f64;
-    let max_hashes = hashes_for_bits(32) as u32;
-    max(min(hashes as u32, max_hashes), 1)
-}
-
-#[inline]
-fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
-    ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64)) / ln(63.0f64 / 64.0f64)
+    let num_bits = (num_u64s * 64) as f64;
+    let hashes = LN_2 * num_bits / num_items as f64;
+    max(hashes as u32, 1)
 }
 
 fn optimal_size(items_count: f64, fp_p: f64) -> usize {
