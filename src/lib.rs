@@ -564,21 +564,18 @@ macro_rules! impl_tests {
 
             #[test]
             fn target_fp_is_accurate() {
-                let thresh = 15.0f64;
-                for mag in 1..=5 {
+                let thresh = 2.0f64;
+                for mag in 1..=6 {
                     let fp = 1.0f64 / 10u64.pow(mag) as f64;
-                    for num_items_mag in 1..6 {
+                    for num_items_mag in 1..7 {
                         let num_items = 10usize.pow(num_items_mag);
                         let mut filter = $name::new_with_false_pos(fp)
                             .seed(&42)
                             .expected_items(num_items);
                         filter.extend(member_nums(num_items));
                         let sample_fp = false_pos_rate(&filter);
-                        if sample_fp > 0.0 {
-                            let score = sample_fp / fp;
-                            // sample_fp can be at most X times greater than requested fp
-                            assert!(score <= thresh, "score {score:}, thresh {thresh:}, size: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
-                        }
+                        let err = (fp - sample_fp).abs() / fp;
+                        assert!(sample_fp < fp || err < thresh,  "err {err:}, thresh {thresh:}, num_items: {num_items:}, fp: {fp:}, sample fp: {sample_fp:}");
                     }
                 }
             }
@@ -620,7 +617,6 @@ macro_rules! impl_tests {
             fn test_optimal_hashes_is_optimal() {
                 fn test_optimal_hashes_is_optimal_<H: Seeded>() {
                     let sizes = [1000, 2000, 5000, 6000, 8000, 10000];
-                    let mut wins = 0;
                     for num_items in sizes {
                         let num_bits = 65000 * 8;
                         let mut filter = $name::new_builder(num_bits)
@@ -637,10 +633,9 @@ macro_rules! impl_tests {
                                 .hashes(num_hashes);
                             test_filter.extend(member_nums(num_items));
                             let fp = false_pos_rate(&test_filter);
-                            wins += (fp_to_beat <= fp) as usize;
+                            assert!(fp_to_beat <= fp);
                         }
                     }
-                    assert!(wins > sizes.len() / 2);
                 }
                 test_optimal_hashes_is_optimal_::<DefaultHasher>();
             }
@@ -675,7 +670,6 @@ macro_rules! impl_tests {
                 for mag in 5..6 {
                     let size = 10usize.pow(mag);
                     let mut prev_fp = 1.0;
-                    let mut prev_prev_fp = 1.0;
                     for num_bits_mag in 9..22 {
                         let num_bits = 1 << num_bits_mag;
 
@@ -690,11 +684,10 @@ macro_rules! impl_tests {
                             filter.num_hashes(),
                         );
                         assert!(
-                            fp <= prev_fp || prev_fp <= prev_prev_fp || fp < 0.01,
+                            fp <= prev_fp,
                             "{}",
                             err
-                        ); // allows 1 data point to be higher
-                        prev_prev_fp = prev_fp;
+                        );
                         prev_fp = fp;
                     }
                 }

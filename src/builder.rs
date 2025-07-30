@@ -1,10 +1,6 @@
 use crate::{math::*, AtomicBloomFilter, BloomFilter, BuildHasher, DefaultHasher};
 use alloc::vec::Vec;
-use core::{
-    cmp::{max, min},
-    f64::consts::LN_2,
-    hash::Hash,
-};
+use core::{cmp::max, f64::consts::LN_2, hash::Hash};
 
 macro_rules! builder_with_bits {
     ($name:ident, $bloom:ident) => {
