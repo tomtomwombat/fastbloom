@@ -1,6 +1,10 @@
-use crate::{AtomicBloomFilter, BloomFilter, BuildHasher, DefaultHasher};
+use crate::{math::*, AtomicBloomFilter, BloomFilter, BuildHasher, DefaultHasher};
 use alloc::vec::Vec;
-use core::{f64::consts::LN_2, hash::Hash};
+use core::{
+    cmp::{max, min},
+    f64::consts::LN_2,
+    hash::Hash,
+};
 
 macro_rules! builder_with_bits {
     ($name:ident, $bloom:ident) => {
@@ -94,8 +98,8 @@ macro_rules! builder_with_bits {
             #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).expected_items(500);")]
             /// ```
             pub fn expected_items(self, expected_num_items: usize) -> $bloom<S> {
-                let num_hashes = optimal_hashes_f(self.data.len(), expected_num_items);
-                self.hashes(num_hashes as u32)
+                let hashes = optimal_hashes_f(self.data.len(), expected_num_items);
+                self.hashes(hashes)
             }
 
             #[doc = concat!("\"Consumes\" this builder and constructs a [`", stringify!($bloom), "`] containing")]
@@ -237,31 +241,22 @@ builder_with_fp!(AtomicBuilderWithFalsePositiveRate, AtomicBloomFilter);
 /// The optimal number of hashes to perform for an item given the expected number of items in the bloom filter.
 /// Proof under "False Positives Analysis": <https://brilliant.org/wiki/bloom-filter/>.
 #[inline]
-fn optimal_hashes_f(len: usize, expected_num_items: usize) -> f64 {
-    let load = expected_num_items as f64 / len as f64;
-    let x = 64.0f64 / load;
-    let hashes_per_u64 = x * f64::ln(2.0f64);
-
-    let max_hashes = hashes_for_bits(32);
-    if hashes_per_u64 > max_hashes {
-        max_hashes
-    } else if hashes_per_u64 < 1.0 {
-        1.0
-    } else {
-        hashes_per_u64
-    }
+fn optimal_hashes_f(num_u64s: usize, num_items: usize) -> u32 {
+    let num_u64s = (num_u64s * 64) as f64;
+    let hashes = LN_2 * num_u64s / num_items as f64;
+    let max_hashes = hashes_for_bits(32) as u32;
+    max(min(hashes as u32, max_hashes), 1)
 }
 
 #[inline]
 fn hashes_for_bits(target_bits_per_u64_per_item: u64) -> f64 {
-    f64::ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64))
-        / f64::ln(63.0f64 / 64.0f64)
+    ln(-(((target_bits_per_u64_per_item as f64) / 64.0f64) - 1.0f64)) / ln(63.0f64 / 64.0f64)
 }
 
 fn optimal_size(items_count: f64, fp_p: f64) -> usize {
     let log2_2 = LN_2 * LN_2;
-    let result = 8 * ((items_count) * f64::ln(fp_p) / (-8.0 * log2_2)).ceil() as usize;
-    core::cmp::max(result, 512)
+    let result = 8 * ceil((items_count) * ln(fp_p) / (-8.0 * log2_2)) as usize;
+    max(result, 512)
 }
 
 #[cfg(test)]

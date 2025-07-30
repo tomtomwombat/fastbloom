@@ -2,14 +2,6 @@ use crate::AtomicU64;
 use alloc::{boxed::Box, vec::Vec};
 use core::sync::atomic::Ordering::Relaxed;
 
-/// The number of bits in the bit mask that is used to index a u64's bits.
-///
-/// u64's are used to store 64 bits, so the index ranges from 0 to 63.
-const BIT_MASK_LEN: u32 = u32::ilog2(u64::BITS);
-
-/// Gets 6 last bits from the bit index, which are used to index a u64's bits.
-const BIT_MASK: u64 = (1 << BIT_MASK_LEN) - 1;
-
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -48,8 +40,8 @@ macro_rules! impl_bitvec {
             }
 
             #[inline(always)]
-            pub(crate) fn check(&self, index: usize, hash: u64) -> bool {
-                let bit = 1u64 << (hash & BIT_MASK);
+            pub(crate) fn check(&self, index: usize) -> bool {
+                let (index, bit) = coord(index);
                 Self::fetch(&self.bits[index]) & bit > 0
             }
         }
@@ -89,8 +81,8 @@ impl BitVec {
     }
 
     #[inline(always)]
-    pub(crate) fn set(&mut self, index: usize, hash: u64) -> bool {
-        let bit = 1u64 << (hash & BIT_MASK);
+    pub(crate) fn set(&mut self, index: usize) -> bool {
+        let (index, bit) = coord(index);
         let previously_contained = self.bits[index] & bit > 0;
         self.bits[index] |= bit;
         previously_contained
@@ -100,6 +92,22 @@ impl BitVec {
     pub(crate) fn clear(&mut self) {
         for i in 0..self.len() {
             self.bits[i] = 0;
+        }
+    }
+
+    #[inline]
+    pub(crate) fn union(&mut self, other: &BitVec) {
+        assert_eq!(self.len(), other.len(), "expected same length");
+        for i in 0..self.len() {
+            self.bits[i] |= other.bits[i];
+        }
+    }
+
+    #[inline]
+    pub(crate) fn intersect(&mut self, other: &BitVec) {
+        assert_eq!(self.len(), other.len(), "expected same length");
+        for i in 0..self.len() {
+            self.bits[i] &= other.bits[i];
         }
     }
 }
@@ -116,8 +124,8 @@ impl AtomicBitVec {
     }
 
     #[inline(always)]
-    pub(crate) fn set(&self, index: usize, hash: u64) -> bool {
-        let bit = 1u64 << (hash & BIT_MASK);
+    pub(crate) fn set(&self, index: usize) -> bool {
+        let (index, bit) = coord(index);
         let previously_contained = self.bits[index].load(Relaxed) & bit > 0;
         self.bits[index].fetch_or(bit, Relaxed);
         previously_contained
@@ -129,12 +137,35 @@ impl AtomicBitVec {
             self.bits[i].store(0, Relaxed);
         }
     }
+
+    #[inline]
+    pub(crate) fn union(&self, other: &AtomicBitVec) {
+        assert_eq!(self.len(), other.len(), "expected same length");
+        for i in 0..self.len() {
+            let x = other.bits[i].load(Relaxed);
+            self.bits[i].fetch_or(x, Relaxed);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn intersect(&self, other: &AtomicBitVec) {
+        assert_eq!(self.len(), other.len(), "expected same length");
+        for i in 0..self.len() {
+            let x = other.bits[i].load(Relaxed);
+            self.bits[i].fetch_and(x, Relaxed);
+        }
+    }
 }
 
 impl Clone for AtomicBitVec {
     fn clone(&self) -> Self {
         self.iter().collect()
     }
+}
+
+#[inline]
+fn coord(index: usize) -> (usize, u64) {
+    (index >> 6, 1u64 << (index & 0b111111))
 }
 
 macro_rules! impl_tests {
@@ -163,15 +194,14 @@ macro_rules! impl_tests {
                 let mut rng = rand::rng();
 
                 for _ in 0..1000 {
-                    let block_index = rng.random_range(0..vec.num_bits() / 64);
-                    let bit_index = rng.random_range(0..64);
+                    let index = rng.random_range(0..vec.num_bits());
 
-                    if !control.contains(&(block_index, bit_index)) {
-                        assert!(!vec.check(block_index, bit_index));
+                    if !control.contains(&index) {
+                        assert!(!vec.check(index));
                     }
-                    control.push((block_index, bit_index));
-                    vec.set(block_index, bit_index);
-                    assert!(vec.check(block_index, bit_index));
+                    control.push(index);
+                    vec.set(index);
+                    assert!(vec.check(index));
                 }
             }
         }

@@ -154,3 +154,44 @@ mod test {
         assert_eq!(hash_all(h1), hash_all(h2),);
     }
 }
+
+#[derive(Clone, Copy)]
+pub(crate) struct DoubleHasher {
+    h1: u64,
+    h2: u64,
+}
+
+impl DoubleHasher {
+    /// The first two hashes of the value, h1 and h2.
+    ///
+    /// Subsequent hashes, h, are efficiently derived from these two using `next_hash`.
+    ///
+    /// This strategy is adapted from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>,
+    /// in which a keyed hash function is used to generate two real hashes, h1 and h2, which are then used to produce
+    /// many more "fake hahes" h, using h = h1 + i * h2.
+    ///
+    /// However, here we only use 1 real hash, for performance, and derive h1 and h2:
+    /// First, we'll think of the 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
+    ///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
+    /// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
+    /// For h1, we'll use the original upper bits 32 of the real hash.
+    ///     - h1 is the same as the real hash
+    /// For h2 we'll use lower 32 bits of h, and multiply by a large constant (same constant as FxHash)
+    ///     - h2 is basically a "weak hash" of h1
+    #[inline]
+    pub(crate) fn new(hash: u64) -> Self {
+        let h2 = hash
+            .wrapping_shr(32)
+            .wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
+        Self { h1: hash, h2 }
+    }
+
+    /// "Double hashing" produces a new hash efficiently from two orignal hashes.
+    ///
+    /// Modified from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>.
+    #[inline]
+    pub(crate) fn next(&mut self) -> u64 {
+        self.h1 = self.h1.wrapping_add(self.h2).rotate_left(5);
+        self.h1
+    }
+}

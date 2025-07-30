@@ -9,6 +9,7 @@ use core::hash::{BuildHasher, Hash, Hasher};
 use core::iter::repeat;
 mod hasher;
 pub use hasher::DefaultHasher;
+use hasher::DoubleHasher;
 mod builder;
 pub use builder::{
     AtomicBuilderWithBits, AtomicBuilderWithFalsePositiveRate, BuilderWithBits,
@@ -16,6 +17,7 @@ pub use builder::{
 };
 mod bit_vector;
 use bit_vector::{AtomicBitVec, BitVec};
+mod math;
 
 #[cfg(feature = "loom")]
 pub(crate) use loom::sync::atomic::AtomicU64;
@@ -177,12 +179,10 @@ macro_rules! impl_bloom {
             /// `true` if the item is possibly in the Bloom filter, `false` otherwise.
             #[inline]
             pub fn contains_hash(&self, source_hash: u64) -> bool {
-                let [mut h1, h2] = starting_hashes(source_hash);
+                let mut hasher = DoubleHasher::new(source_hash);
                 (0..self.num_hashes).all(|_| {
-                    // Set bits the traditional way--1 bit per composed hash
-                    let index = block_index(self.bits.len(), h1);
-                    let h = next_hash(&mut h1, h2);
-                    self.bits.check(index, h)
+                    let h = hasher.next();
+                    self.bits.check(index(self.num_bits(), h))
                 })
             }
 
@@ -290,13 +290,11 @@ impl<S: BuildHasher> BloomFilter<S> {
     /// `false` otherwise.
     #[inline]
     pub fn insert_hash(&mut self, hash: u64) -> bool {
-        let [mut h1, h2] = starting_hashes(hash);
+        let mut hasher = DoubleHasher::new(hash);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
-            // Set bits the traditional way--1 bit per composed hash
-            let index = block_index(self.bits.len(), h1);
-            let h = next_hash(&mut h1, h2);
-            previously_contained &= self.bits.set(index, h);
+            let h = hasher.next();
+            previously_contained &= self.bits.set(index(self.num_bits(), h));
         }
         previously_contained
     }
@@ -313,6 +311,64 @@ impl<S: BuildHasher> BloomFilter<S> {
     #[inline]
     pub fn clear(&mut self) {
         self.bits.clear();
+    }
+
+    /// Unions `other` into `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
+    ///
+    /// # Panics
+    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
+    ///
+    /// # Example
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// bloom.insert_all(0..=1000);
+    /// other.insert_all(500..=1500);
+    /// bloom.union(&other);
+    ///
+    /// for x in 0..=2000 {
+    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) || other.contains(&x));
+    /// }
+    /// ```
+    #[inline]
+    pub fn union(&mut self, other: &BloomFilter<S>) {
+        assert_eq!(
+            self.num_hashes(),
+            other.num_hashes(),
+            "expected same number of hashes"
+        );
+        self.bits.union(&other.bits);
+    }
+
+    /// Intersects `other` onto `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
+    ///
+    /// # Panics
+    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
+    ///
+    /// # Example
+    /// ```
+    /// use fastbloom::BloomFilter;
+    ///
+    /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// bloom.insert_all(0..=1000);
+    /// other.insert_all(500..=1500);
+    /// bloom.intersect(&other);
+    ///
+    /// for x in 0..=2000 {
+    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) && other.contains(&x));
+    /// }
+    /// ```
+    #[inline]
+    pub fn intersect(&mut self, other: &BloomFilter<S>) {
+        assert_eq!(
+            self.num_hashes(),
+            other.num_hashes(),
+            "expected same number of hashes"
+        );
+        self.bits.intersect(&other.bits);
     }
 }
 
@@ -347,13 +403,11 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     /// `false` otherwise.
     #[inline]
     pub fn insert_hash(&self, hash: u64) -> bool {
-        let [mut h1, h2] = starting_hashes(hash);
+        let mut hasher = DoubleHasher::new(hash);
         let mut previously_contained = true;
         for _ in 0..self.num_hashes {
-            // Set bits the traditional way--1 bit per composed hash
-            let index = block_index(self.bits.len(), h1);
-            let h = next_hash(&mut h1, h2);
-            previously_contained &= self.bits.set(index, h);
+            let h = hasher.next();
+            previously_contained &= self.bits.set(index(self.num_bits(), h));
         }
         previously_contained
     }
@@ -371,30 +425,64 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     pub fn clear(&self) {
         self.bits.clear();
     }
-}
 
-/// The first two hashes of the value, h1 and h2.
-///
-/// Subsequent hashes, h, are efficiently derived from these two using `next_hash`.
-///
-/// This strategy is adapted from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>,
-/// in which a keyed hash function is used to generate two real hashes, h1 and h2, which are then used to produce
-/// many more "fake hahes" h, using h = h1 + i * h2.
-///
-/// However, here we only use 1 real hash, for performance, and derive h1 and h2:
-/// First, we'll think of the 64 bit real hash as two seperate 32 bit hashes, h1 and h2.
-///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
-/// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
-/// For h1, we'll use the original upper bits 32 of the real hash.
-///     - h1 is the same as the real hash
-/// For h2 we'll use lower 32 bits of h, and multiply by a large constant (same constant as FxHash)
-///     - h2 is basically a "weak hash" of h1
-#[inline]
-pub(crate) fn starting_hashes(hash: u64) -> [u64; 2] {
-    let h2 = hash
-        .wrapping_shr(32)
-        .wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
-    [hash, h2]
+    /// Unions `other` into `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
+    ///
+    /// # Panics
+    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
+    ///
+    /// # Example
+    /// ```
+    /// use fastbloom::AtomicBloomFilter;
+    ///
+    /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// bloom.insert_all(0..=1000);
+    /// other.insert_all(500..=1500);
+    /// bloom.union(&other);
+    ///
+    /// for x in 0..=2000 {
+    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) || other.contains(&x));
+    /// }
+    /// ```
+    #[inline]
+    pub fn union(&self, other: &AtomicBloomFilter<S>) {
+        assert_eq!(
+            self.num_hashes(),
+            other.num_hashes(),
+            "expected same number of hashes"
+        );
+        self.bits.union(&other.bits);
+    }
+
+    /// Intersects `other` onto `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
+    ///
+    /// # Panics
+    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
+    ///
+    /// # Example
+    /// ```
+    /// use fastbloom::AtomicBloomFilter;
+    ///
+    /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
+    /// bloom.insert_all(0..=1000);
+    /// other.insert_all(500..=1500);
+    /// bloom.intersect(&other);
+    ///
+    /// for x in 0..=2000 {
+    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) && other.contains(&x));
+    /// }
+    /// ```
+    #[inline]
+    pub fn intersect(&self, other: &AtomicBloomFilter<S>) {
+        assert_eq!(
+            self.num_hashes(),
+            other.num_hashes(),
+            "expected same number of hashes"
+        );
+        self.bits.intersect(&other.bits);
+    }
 }
 
 /// Returns a the block index for an item's hash.
@@ -402,17 +490,8 @@ pub(crate) fn starting_hashes(hash: u64) -> [u64; 2] {
 /// This implementation is a more performant alternative to `hash % num_blocks`:
 /// <https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/>
 #[inline]
-pub(crate) fn block_index(num_blocks: usize, hash: u64) -> usize {
+pub(crate) fn index(num_blocks: usize, hash: u64) -> usize {
     (((hash >> 32).wrapping_mul(num_blocks as u64)) >> 32) as usize
-}
-
-/// "Double hashing" produces a new hash efficiently from two orignal hashes.
-///
-/// Modified from <https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf>.
-#[inline]
-fn next_hash(h1: &mut u64, h2: u64) -> u64 {
-    *h1 = h1.wrapping_add(h2).rotate_left(5);
-    *h1
 }
 
 macro_rules! impl_tests {
@@ -638,11 +717,10 @@ macro_rules! impl_tests {
             fn test_seeded_hash_from_hashes_depth() {
                 for size in [1, 10, 100, 1000] {
                     let mut rng = StdRng::seed_from_u64(524323);
-                    let mut h1 = rng.random_range(0..u64::MAX);
-                    let h2 = rng.random_range(0..u64::MAX);
+                    let mut hasher = DoubleHasher::new(rng.random_range(0..u64::MAX));
                     let mut seeded_hash_counts: Vec<_> = repeat(0).take(size).collect();
                     for _ in 0..(size * 10_000) {
-                        let hi = next_hash(&mut h1, h2);
+                        let hi = hasher.next();
                         seeded_hash_counts[(hi as usize) % size] += 1;
                     }
                     assert_even_distribution(&seeded_hash_counts, 0.05);
@@ -731,6 +809,39 @@ macro_rules! impl_tests {
 
 impl_tests!(non_atomic, BloomFilter);
 impl_tests!(atomic, AtomicBloomFilter);
+
+#[cfg(not(feature = "loom"))]
+#[cfg(test)]
+mod atomic_parity_tests {
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_parity() {
+        use super::*;
+
+        for num_bits in [64, 1024, 4096, 1 << 16] {
+            for seed in 4..=18 {
+                let mut non = BloomFilter::with_num_bits(num_bits)
+                    .seed(&seed)
+                    .expected_items(100);
+                non.insert_all(0..=100);
+                let atomic = AtomicBloomFilter::with_num_bits(num_bits)
+                    .seed(&seed)
+                    .expected_items(100);
+                atomic.insert_all(0..=100);
+
+                let non_bytes = serde_cbor::to_vec(&non).unwrap();
+                let atomic_bytes = serde_cbor::to_vec(&atomic).unwrap();
+                assert_eq!(non_bytes, atomic_bytes);
+
+                let non_from_atomic: BloomFilter = serde_cbor::from_slice(&atomic_bytes).unwrap();
+                let atomic_from_non: AtomicBloomFilter =
+                    serde_cbor::from_slice(&non_bytes).unwrap();
+                assert_eq!(non_from_atomic, non);
+                assert_eq!(atomic_from_non, atomic);
+            }
+        }
+    }
+}
 
 #[cfg(feature = "loom")]
 #[cfg(test)]
