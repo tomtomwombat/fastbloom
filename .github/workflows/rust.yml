@@ -42,8 +42,9 @@ jobs:
         fail_ci_if_error: true
     - name: Install cargo-hack
       run: cargo install cargo-hack
-    - name: Tests
+    - name: Build
       run: cargo hack build --verbose --feature-powerset --exclude-features loom
+    - name: Tests
       run: cargo hack test --verbose --feature-powerset --exclude-features loom
     - name: Loom
       run: cargo hack test loom --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
@@ -58,6 +59,7 @@ jobs:
           override: true
       - name: Install cargo-hack
         run: cargo install cargo-hack
-      - name: Tests
+      - name: Build
         run: cargo hack build --verbose --feature-powerset --exclude-features loom
+      - name: Tests
         run: cargo hack test --verbose --feature-powerset --exclude-features loom
