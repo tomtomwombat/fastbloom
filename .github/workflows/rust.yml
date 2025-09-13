@@ -60,7 +60,7 @@ jobs:
           toolchain: "1.70"
           override: true
       - name: Install cargo-hack
-        run: cargo install cargo-hack
+        run: cargo install cargo-hack --version 0.6.37 --force --locked
       - name: Build
         run: cargo hack build --verbose --feature-powerset --exclude-features loom
       - name: Tests
