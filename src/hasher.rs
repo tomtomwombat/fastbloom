@@ -175,15 +175,12 @@ impl DoubleHasher {
     ///     - Using h = h1 + i * h2 generates entropy in at least the lower 32 bits
     /// Second, for more entropy in the upper 32 bits, we'll populate the upper 32 bits for both h1 and h2:
     /// For h1, we'll use the original upper bits 32 of the real hash.
-    ///     - h1 is the same as the real hash
-    /// For h2 we'll use lower 32 bits of h, and multiply by a large constant (same constant as FxHash)
-    ///     - h2 is basically a "weak hash" of h1
+    /// For h2 we'll use lower 32 bits of h multiplied by 0x51_7c_c1_b7_27_22_0a_95.
     #[inline]
-    pub(crate) fn new(hash: u64) -> Self {
-        let h2 = hash
-            .wrapping_shr(32)
-            .wrapping_mul(0x51_7c_c1_b7_27_22_0a_95); // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
-        Self { h1: hash, h2 }
+    pub(crate) fn new(h1: u64) -> Self {
+        // 0xffff_ffff_ffff_ffff / 0x517c_c1b7_2722_0a95 = π
+        let h2 = h1.wrapping_shr(32).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+        Self { h1, h2 }
     }
 
     /// "Double hashing" produces a new hash efficiently from two orignal hashes.
