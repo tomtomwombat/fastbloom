@@ -782,13 +782,19 @@ mod loom_tests {
         loom::model(|| {
             let b = loom::sync::Arc::new(AtomicBloomFilter::with_num_bits(128).seed(&42).hashes(2));
             let expected = AtomicBloomFilter::with_num_bits(128).seed(&42).hashes(2);
-            expected.extend(1..=3);
+            for x in 1..=3 {
+                expected.insert(&x);
+            }
 
             let handles: Vec<_> = [(1..=2), (2..=3)]
                 .into_iter()
                 .map(|data| {
                     let v = b.clone();
-                    loom::thread::spawn(move || v.extend(data))
+                    loom::thread::spawn(move || {
+                        for x in data {
+                            v.insert(&x);
+                        }
+                    })
                 })
                 .collect();
 
