@@ -496,13 +496,13 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     }
 }
 
-/// Returns a the block index for an item's hash.
-/// The block index must be in the range `0..num_blocks`.
-/// This implementation is a more performant alternative to `hash % num_blocks`:
+/// Returns a the bit index for an item's hash.
+/// The bit index must be in the range `0..num_bits`.
+/// This implementation is a more performant alternative to `hash % num_bits`:
 /// <https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/>
 #[inline]
-pub(crate) fn index(num_blocks: usize, hash: u64) -> usize {
-    (((hash >> 32).wrapping_mul(num_blocks as u64)) >> 32) as usize
+pub(crate) fn index(num_bits: usize, hash: u64) -> usize {
+    ((hash as u128 * num_bits as u128) >> 64) as usize
 }
 
 macro_rules! impl_tests {
