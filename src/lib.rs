@@ -29,7 +29,7 @@ pub(crate) use core::sync::atomic::AtomicU64;
 compile_error!("features `loom` and `serde` are mutually exclusive");
 
 macro_rules! impl_bloom {
-    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty, $ismut:literal) => {
+    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty, $ismut:literal, $($m:ident)?) => {
         /// A space efficient approximate membership set data structure.
         /// False positives from [`contains`](Self::contains) are possible, but false negatives
         /// are not, i.e. [`contains`](Self::contains) for all items in the set is guaranteed to return
@@ -229,6 +229,125 @@ macro_rules! impl_bloom {
                 let density = crate::expected_density(self.num_hashes(), self.num_bits(), num_items);
                 crate::expected_false_pos(self.num_hashes(), density)
             }
+
+            /// Inserts an element into the Bloom filter.
+            ///
+            /// # Returns
+            ///
+            /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
+            /// `false` otherwise.
+            ///
+            /// # Examples
+            /// ```
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
+            ///
+            #[doc = concat!("let ", $ismut, "bloom = ", stringify!($name), "::with_num_bits(1024).hashes(4);")]
+            /// bloom.insert(&2);
+            /// assert!(bloom.contains(&2));
+            /// ```
+            #[inline]
+            pub fn insert(&$($m)? self, val: &(impl Hash + ?Sized)) -> bool {
+                self.insert_hash(self.source_hash(val))
+            }
+
+            /// Inserts the hash of an element into the Bloom filter.
+            /// That is the element is pre-hashed and all subsequent hashes are derived from this "source" hash.
+            ///
+            /// # Returns
+            ///
+            /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
+            /// `false` otherwise.
+            #[inline]
+            pub fn insert_hash(&$($m)? self, hash: u64) -> bool {
+                let mut previously_contained = true;
+                previously_contained &= self.bits.set(index(self.num_bits(), hash));
+                let mut hasher = DoubleHasher::new(hash);
+                for _ in 0..self.num_hashes_minus_one {
+                    let h = hasher.next();
+                    previously_contained &= self.bits.set(index(self.num_bits(), h));
+                }
+                previously_contained
+            }
+
+            /// Inserts all the items in `iter` into the `self`.
+            #[inline]
+            pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&$($m)? self, iter: I) {
+                for val in iter {
+                    self.insert(val);
+                }
+            }
+
+            /// Clear all of the bits in the Bloom filter, removing all items.
+            #[inline]
+            pub fn clear(&$($m)? self) {
+                self.bits.clear();
+            }
+
+            /// Unions `other` into `self`. The hashers of both Bloom filters must be identical (this is not enforced!).
+            ///
+            /// # Panics
+            /// Panics if the other Bloom filter has a different number of bits or hashes than `self`.
+            ///
+            /// # Example
+            /// ```
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
+            ///
+            #[doc = concat!("let ", $ismut, "bloom = ", stringify!($name), "::with_num_bits(4096).seed(&1).hashes(4);")]
+            #[doc = concat!("let ", $ismut, "other = ", stringify!($name), "::with_num_bits(4096).seed(&1).hashes(4);")]
+            /// for x in 0..=1000 {
+            ///     bloom.insert(&x);
+            /// }
+            /// for x in 500..=1500 {
+            ///     bloom.insert(&x);
+            /// }
+            /// bloom.union(&other);
+            ///
+            /// for x in 0..=2000 {
+            ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) || other.contains(&x));
+            /// }
+            /// ```
+            #[inline]
+            pub fn union(&$($m)? self, other: &Self) {
+                assert_eq!(
+                    self.num_hashes(),
+                    other.num_hashes(),
+                    "expected same number of hashes"
+                );
+                self.bits.union(&other.bits);
+            }
+
+            /// Intersects `other` onto `self`. The hashers of both Bloom filters must be identical (this is not enforced!).
+            ///
+            /// # Panics
+            /// Panics if the other Bloom filter has a different number of bits or hashes than `self`.
+            ///
+            /// # Example
+            /// ```
+            #[doc = concat!("use fastbloom::", stringify!($name), ";")]
+            ///
+            #[doc = concat!("let ", $ismut, "bloom = ", stringify!($name), "::with_num_bits(4096).seed(&1).hashes(4);")]
+            #[doc = concat!("let ", $ismut, "other = ", stringify!($name), "::with_num_bits(4096).seed(&1).hashes(4);")]
+            /// for x in 0..=1000 {
+            ///     bloom.insert(&x);
+            /// }
+            /// for x in 500..=1500 {
+            ///     bloom.insert(&x);
+            /// }
+            /// bloom.intersect(&other);
+            ///
+            /// for x in 0..=2000 {
+            ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) && other.contains(&x));
+            /// }
+            /// ```
+            #[inline]
+            pub fn intersect(&$($m)? self, other: &Self) {
+                assert_eq!(
+                    self.num_hashes(),
+                    other.num_hashes(),
+                    "expected same number of hashes"
+                );
+                self.bits.intersect(&other.bits);
+            }
         }
 
         impl<T, S: BuildHasher> Extend<T> for $name<S>
@@ -258,7 +377,8 @@ impl_bloom!(
     BuilderWithFalsePositiveRate,
     BitVec,
     u64,
-    "mut "
+    "mut ",
+    mut
 );
 impl_bloom!(
     AtomicBloomFilter,
@@ -266,243 +386,8 @@ impl_bloom!(
     AtomicBuilderWithFalsePositiveRate,
     AtomicBitVec,
     AtomicU64,
-    ""
+    "",
 );
-
-impl<S: BuildHasher> BloomFilter<S> {
-    /// Inserts an element into the Bloom filter.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
-    /// `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// use fastbloom::BloomFilter;
-    ///
-    /// let mut bloom = BloomFilter::with_num_bits(1024).hashes(4);
-    /// bloom.insert(&2);
-    /// assert!(bloom.contains(&2));
-    /// ```
-    #[inline]
-    pub fn insert(&mut self, val: &(impl Hash + ?Sized)) -> bool {
-        self.insert_hash(self.source_hash(val))
-    }
-
-    /// Inserts the hash of an element into the Bloom filter.
-    /// That is the element is pre-hashed and all subsequent hashes are derived from this "source" hash.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
-    /// `false` otherwise.
-    #[inline]
-    pub fn insert_hash(&mut self, hash: u64) -> bool {
-        let mut previously_contained = true;
-        previously_contained &= self.bits.set(index(self.num_bits(), hash));
-        let mut hasher = DoubleHasher::new(hash);
-        for _ in 0..self.num_hashes_minus_one {
-            let h = hasher.next();
-            previously_contained &= self.bits.set(index(self.num_bits(), h));
-        }
-        previously_contained
-    }
-
-    /// Inserts all the items in `iter` into the `self`.
-    #[inline]
-    pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        for val in iter {
-            self.insert(val);
-        }
-    }
-
-    /// Clear all of the bits in the Bloom filter, removing all items.
-    #[inline]
-    pub fn clear(&mut self) {
-        self.bits.clear();
-    }
-
-    /// Unions `other` into `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
-    ///
-    /// # Panics
-    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
-    ///
-    /// # Example
-    /// ```
-    /// use fastbloom::BloomFilter;
-    ///
-    /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.extend(0..=1000);
-    /// other.extend(500..=1500);
-    /// bloom.union(&other);
-    ///
-    /// for x in 0..=2000 {
-    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) || other.contains(&x));
-    /// }
-    /// ```
-    #[inline]
-    pub fn union(&mut self, other: &BloomFilter<S>) {
-        assert_eq!(
-            self.num_hashes(),
-            other.num_hashes(),
-            "expected same number of hashes"
-        );
-        self.bits.union(&other.bits);
-    }
-
-    /// Intersects `other` onto `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
-    ///
-    /// # Panics
-    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
-    ///
-    /// # Example
-    /// ```
-    /// use fastbloom::BloomFilter;
-    ///
-    /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.extend(0..=1000);
-    /// other.extend(500..=1500);
-    /// bloom.intersect(&other);
-    ///
-    /// for x in 0..=2000 {
-    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) && other.contains(&x));
-    /// }
-    /// ```
-    #[inline]
-    pub fn intersect(&mut self, other: &BloomFilter<S>) {
-        assert_eq!(
-            self.num_hashes(),
-            other.num_hashes(),
-            "expected same number of hashes"
-        );
-        self.bits.intersect(&other.bits);
-    }
-}
-
-impl<S: BuildHasher> AtomicBloomFilter<S> {
-    /// Inserts an element into the Bloom filter.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
-    /// `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// use fastbloom::AtomicBloomFilter;
-    ///
-    /// let bloom = AtomicBloomFilter::with_num_bits(1024).hashes(4);
-    /// bloom.insert(&2);
-    /// assert!(bloom.contains(&2));
-    /// ```
-    #[inline]
-    pub fn insert(&self, val: &(impl Hash + ?Sized)) -> bool {
-        let source_hash = self.source_hash(val);
-        self.insert_hash(source_hash)
-    }
-
-    /// Inserts the hash of an element into the Bloom filter.
-    /// That is the element is pre-hashed and all subsequent hashes are derived from this "source" hash.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the item may have been previously in the Bloom filter (indicating a potential false positive),
-    /// `false` otherwise.
-    #[inline]
-    pub fn insert_hash(&self, hash: u64) -> bool {
-        let mut previously_contained = true;
-        previously_contained &= self.bits.set(index(self.num_bits(), hash));
-        let mut hasher = DoubleHasher::new(hash);
-        for _ in 0..self.num_hashes_minus_one {
-            let h = hasher.next();
-            previously_contained &= self.bits.set(index(self.num_bits(), h));
-        }
-        previously_contained
-    }
-
-    /// Inserts all the items in `iter` into the `self`. Immutable version of [`Self::extend`].
-    #[inline]
-    pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&self, iter: I) {
-        for val in iter {
-            self.insert(val);
-        }
-    }
-
-    /// Clear all of the bits in the Bloom filter, removing all items.
-    #[inline]
-    pub fn clear(&self) {
-        self.bits.clear();
-    }
-
-    /// Unions `other` into `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
-    ///
-    /// # Panics
-    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
-    ///
-    /// # Example
-    /// ```
-    /// use fastbloom::AtomicBloomFilter;
-    ///
-    /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// for x in 0..=1000 {
-    ///     bloom.insert(&x);
-    /// }
-    /// for x in 500..=1500 {
-    ///     other.insert(&x);
-    /// }
-    /// bloom.union(&other);
-    ///
-    /// for x in 0..=2000 {
-    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) || other.contains(&x));
-    /// }
-    /// ```
-    #[inline]
-    pub fn union(&self, other: &AtomicBloomFilter<S>) {
-        assert_eq!(
-            self.num_hashes(),
-            other.num_hashes(),
-            "expected same number of hashes"
-        );
-        self.bits.union(&other.bits);
-    }
-
-    /// Intersects `other` onto `self`. The hashers of both Bloomfilters must be identical (this is not enforced!).
-    ///
-    /// # Panics
-    /// Panics if the other Bloomfilter has a different number of bits or hashes than `self`.
-    ///
-    /// # Example
-    /// ```
-    /// use fastbloom::AtomicBloomFilter;
-    ///
-    /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// for x in 0..=1000 {
-    ///     bloom.insert(&x);
-    /// }
-    /// for x in 500..=1500 {
-    ///     other.insert(&x);
-    /// }
-    /// bloom.intersect(&other);
-    ///
-    /// for x in 0..=2000 {
-    ///     assert_eq!(bloom.contains(&x), bloom.contains(&x) && other.contains(&x));
-    /// }
-    /// ```
-    #[inline]
-    pub fn intersect(&self, other: &AtomicBloomFilter<S>) {
-        assert_eq!(
-            self.num_hashes(),
-            other.num_hashes(),
-            "expected same number of hashes"
-        );
-        self.bits.intersect(&other.bits);
-    }
-}
 
 /// Returns a the bit index for an item's hash.
 /// The bit index must be in the range `0..num_bits`.
