@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use core::{cmp::max, f64::consts::LN_2, hash::Hash};
 
 macro_rules! builder_with_bits {
-    ($name:ident, $bloom:ident) => {
+    ($name:ident, $($m:ident)?, $bloom:ident) => {
         /// A Bloom filter builder with an immutable number of bits.
         ///
         #[doc = concat!("This type can be used to construct an instance of [`", stringify!($bloom), "`] via the builder pattern.")]
@@ -111,26 +111,26 @@ macro_rules! builder_with_bits {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).items([1, 2, 3]);")]
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).items([1, 2, 3].iter());")]
             /// ```
-            pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
+            pub fn items<'a, H: Hash + 'a, I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = &'a H>>>(
                 self,
                 items: I,
             ) -> $bloom<S> {
                 let into_iter = items.into_iter();
-                let mut filter = self.expected_items(into_iter.len());
-                filter.extend(into_iter);
+                let $($m)? filter = self.expected_items(into_iter.len());
+                filter.insert_all(into_iter);
                 filter
             }
         }
     };
 }
 
-builder_with_bits!(BuilderWithBits, BloomFilter);
-builder_with_bits!(AtomicBuilderWithBits, AtomicBloomFilter);
+builder_with_bits!(BuilderWithBits, mut, BloomFilter);
+builder_with_bits!(AtomicBuilderWithBits, , AtomicBloomFilter);
 
 macro_rules! builder_with_fp {
-    ($name:ident, $bloom:ident) => {
+    ($name:ident, $($m:ident)?, $bloom:ident) => {
         /// A Bloom filter builder with an immutable false positive rate.
         ///
         /// This type can be used to construct an instance of [`BloomFilter`] via the builder pattern.
@@ -222,23 +222,23 @@ macro_rules! builder_with_fp {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).items([1, 2, 3]);")]
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).items([1, 2, 3].iter());")]
             /// ```
-            pub fn items<I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl Hash>>>(
+            pub fn items<'a, H: Hash + 'a, I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = &'a H>>>(
                 self,
                 items: I,
             ) -> $bloom<S> {
                 let into_iter = items.into_iter();
-                let mut filter = self.expected_items(into_iter.len());
-                filter.extend(into_iter);
+                let $($m)? filter = self.expected_items(into_iter.len());
+                filter.insert_all(into_iter);
                 filter
             }
         }
     };
 }
 
-builder_with_fp!(BuilderWithFalsePositiveRate, BloomFilter);
-builder_with_fp!(AtomicBuilderWithFalsePositiveRate, AtomicBloomFilter);
+builder_with_fp!(BuilderWithFalsePositiveRate, mut, BloomFilter);
+builder_with_fp!(AtomicBuilderWithFalsePositiveRate, , AtomicBloomFilter);
 
 /// Returns the optimal (for false positive rate) number of hashes to perform for an item given the expected number of items in the bloom filter.
 pub fn optimal_hashes(num_bits: usize, num_items: usize) -> u32 {

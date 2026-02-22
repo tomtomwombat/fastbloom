@@ -54,7 +54,7 @@ macro_rules! impl_bloom {
         /// ```rust
         #[doc = concat!("use fastbloom::", stringify!($name), ";")]
         ///
-        #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).items([\"42\", \"🦀\"]);")]
+        #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).items([\"42\", \"🦀\"].iter());")]
         /// assert!(filter.contains("42"));
         /// assert!(filter.contains("🦀"));
         /// ```
@@ -65,7 +65,7 @@ macro_rules! impl_bloom {
         ///
         #[doc = concat!("let filter = ", stringify!($name), "::with_num_bits(1024)")]
         ///     .hasher(RandomState::default())
-        ///     .items(["42", "🦀"]);
+        ///     .items(["42", "🦀"].iter());
         /// ```
         #[derive(Debug, Clone)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -138,7 +138,7 @@ macro_rules! impl_bloom {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            #[doc = concat!("let orig = ", stringify!($name), "::with_false_pos(0.001).seed(&42).items([1, 2]);")]
+            #[doc = concat!("let orig = ", stringify!($name), "::with_false_pos(0.001).seed(&42).items([1, 2].iter());")]
             /// let num_hashes = orig.num_hashes();
             #[doc = concat!("let new = ", stringify!($name), "::from_vec(orig.iter().collect()).seed(&42).hashes(num_hashes);")]
             ///
@@ -162,7 +162,7 @@ macro_rules! impl_bloom {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($name), "::with_num_bits(1024).items([1, 2, 3]);")]
+            #[doc = concat!("let bloom = ", stringify!($name), "::with_num_bits(1024).items([1, 2, 3].iter());")]
             /// assert!(bloom.contains(&1));
             /// ```
             #[inline]
@@ -311,9 +311,9 @@ impl<S: BuildHasher> BloomFilter<S> {
 
     /// Inserts all the items in `iter` into the `self`.
     #[inline]
-    pub fn insert_all<T: Hash, I: IntoIterator<Item = T>>(&mut self, iter: I) {
+    pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         for val in iter {
-            self.insert(&val);
+            self.insert(val);
         }
     }
 
@@ -334,8 +334,8 @@ impl<S: BuildHasher> BloomFilter<S> {
     ///
     /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
     /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.insert_all(0..=1000);
-    /// other.insert_all(500..=1500);
+    /// bloom.extend(0..=1000);
+    /// other.extend(500..=1500);
     /// bloom.union(&other);
     ///
     /// for x in 0..=2000 {
@@ -363,8 +363,8 @@ impl<S: BuildHasher> BloomFilter<S> {
     ///
     /// let mut bloom = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
     /// let mut other = BloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.insert_all(0..=1000);
-    /// other.insert_all(500..=1500);
+    /// bloom.extend(0..=1000);
+    /// other.extend(500..=1500);
     /// bloom.intersect(&other);
     ///
     /// for x in 0..=2000 {
@@ -425,9 +425,9 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
 
     /// Inserts all the items in `iter` into the `self`. Immutable version of [`Self::extend`].
     #[inline]
-    pub fn insert_all<T: Hash, I: IntoIterator<Item = T>>(&self, iter: I) {
+    pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&self, iter: I) {
         for val in iter {
-            self.insert(&val);
+            self.insert(val);
         }
     }
 
@@ -448,8 +448,12 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     ///
     /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
     /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.insert_all(0..=1000);
-    /// other.insert_all(500..=1500);
+    /// for x in 0..=1000 {
+    ///     bloom.insert(&x);
+    /// }
+    /// for x in 500..=1500 {
+    ///     other.insert(&x);
+    /// }
     /// bloom.union(&other);
     ///
     /// for x in 0..=2000 {
@@ -477,8 +481,12 @@ impl<S: BuildHasher> AtomicBloomFilter<S> {
     ///
     /// let bloom = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
     /// let other = AtomicBloomFilter::with_num_bits(4096).seed(&1).hashes(4);
-    /// bloom.insert_all(0..=1000);
-    /// other.insert_all(500..=1500);
+    /// for x in 0..=1000 {
+    ///     bloom.insert(&x);
+    /// }
+    /// for x in 500..=1500 {
+    ///     other.insert(&x);
+    /// }
     /// bloom.intersect(&other);
     ///
     /// for x in 0..=2000 {
@@ -859,11 +867,11 @@ mod atomic_parity_tests {
                 let mut non = BloomFilter::with_num_bits(num_bits)
                     .seed(&seed)
                     .expected_items(100);
-                non.insert_all(0..=100);
-                let atomic = AtomicBloomFilter::with_num_bits(num_bits)
+                non.extend(0..=100);
+                let mut atomic = AtomicBloomFilter::with_num_bits(num_bits)
                     .seed(&seed)
                     .expected_items(100);
-                atomic.insert_all(0..=100);
+                atomic.extend(0..=100);
 
                 let non_bytes = serde_cbor::to_vec(&non).unwrap();
                 let atomic_bytes = serde_cbor::to_vec(&atomic).unwrap();
@@ -889,13 +897,13 @@ mod loom_tests {
         loom::model(|| {
             let b = loom::sync::Arc::new(AtomicBloomFilter::with_num_bits(128).seed(&42).hashes(2));
             let expected = AtomicBloomFilter::with_num_bits(128).seed(&42).hashes(2);
-            expected.insert_all(1..=3);
+            expected.extend(1..=3);
 
             let handles: Vec<_> = [(1..=2), (2..=3)]
                 .into_iter()
                 .map(|data| {
                     let v = b.clone();
-                    loom::thread::spawn(move || v.insert_all(data))
+                    loom::thread::spawn(move || v.extend(data))
                 })
                 .collect();
 

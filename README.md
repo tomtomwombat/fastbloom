@@ -31,7 +31,7 @@ Instantiate with a target false positive rate:
 ```rust
 use fastbloom::BloomFilter;
 
-let filter = BloomFilter::with_false_pos(0.001).items(["42", "🦀"]);
+let filter = BloomFilter::with_false_pos(0.001).items(["42", "🦀"].iter());
 assert!(filter.contains("42"));
 assert!(filter.contains("🦀"));
 ```
@@ -42,7 +42,7 @@ use foldhash::fast::RandomState;
 
 let filter = BloomFilter::with_num_bits(1024)
     .hasher(RandomState::default())
-    .items(["42", "🦀"]);
+    .items(["42", "🦀"].iter());
 ```
 Full concurrency support. `AtomicBloomFilter` is a drop-in replacement for `RwLock<OtherBloomFilter>` because all methods take `&self`:
 ```rust
