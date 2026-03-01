@@ -17,10 +17,10 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = ["std", "rand"]
-std = []
+std = ["portable-atomic/std"]
 loom = ["dep:loom"]
 rand = ["std", "dep:rand"]
-serde = ["dep:serde", "siphasher/serde_std"]
+serde = ["dep:serde", "siphasher/serde_std", "portable-atomic/serde"]
 
 [dependencies]
 foldhash = { version = "0.2.0", default-features = false }
@@ -29,6 +29,7 @@ rand = { version = "0.9.0", optional = true }
 serde = { version = "1.0.203", features = ["derive"], optional = true }
 siphasher = { version = "1.0.0", default-features = false }
 libm = "0.2"
+portable-atomic = { version = "1.13.1", default-features = false, features = ["fallback"] }
 
 [dev-dependencies]
 fastrand = "2.3.0"

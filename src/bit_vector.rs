@@ -1,6 +1,6 @@
 use crate::AtomicU64;
 use alloc::{boxed::Box, vec::Vec};
-use core::sync::atomic::Ordering::Relaxed;
+use portable_atomic::Ordering::Relaxed;
 
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Debug, Clone)]
