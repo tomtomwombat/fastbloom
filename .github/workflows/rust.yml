@@ -22,6 +22,12 @@ jobs:
       run: cargo hack build --verbose --release --feature-powerset --exclude-features loom
     - name: Tests
       run: cargo hack test --verbose --release --feature-powerset --exclude-features loom
+
+    - name: Install thumb target
+      run: rustup target add thumbv7em-none-eabi
+    - name: 32-bit embedded check
+      run: cargo check --target thumbv7em-none-eabi --no-default-features
+
     - name: Loom build
       run: cargo hack build --lib --bins --tests --feature-powerset --exclude-features serde,rand,default
     - name: Loom tests
@@ -41,3 +47,8 @@ jobs:
         run: cargo hack build --verbose --release --feature-powerset --exclude-features loom
       - name: Tests
         run: cargo hack test --verbose --release --feature-powerset --exclude-features loom
+
+      - name: Install thumb target
+        run: rustup target add thumbv7em-none-eabi
+      - name: 32-bit embedded check
+        run: cargo check --target thumbv7em-none-eabi --no-default-features
