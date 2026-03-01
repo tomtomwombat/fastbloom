@@ -20,7 +20,7 @@ default = ["std", "rand"]
 std = ["portable-atomic/std"]
 loom = ["dep:loom"]
 rand = ["std", "dep:rand"]
-serde = ["dep:serde", "siphasher/serde_std"]
+serde = ["dep:serde", "siphasher/serde_std", "portable-atomic/serde"]
 
 [dependencies]
 foldhash = { version = "0.2.0", default-features = false }
