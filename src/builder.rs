@@ -67,6 +67,10 @@ macro_rules! builder_with_bits {
             /// "Consumes" this builder, using the provided `num_hashes` to return an
             #[doc = concat!("empty [`", stringify!($bloom), "`].")]
             ///
+            /// Note: if `num_hashes` is 0, it is treated as 1. Bloom filters with 0
+            /// hashes per item are practically useless, and disallowing this case
+            /// enables further optimizations.
+            ///
             /// # Examples
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
@@ -76,7 +80,7 @@ macro_rules! builder_with_bits {
             pub fn hashes(self, num_hashes: u32) -> $bloom<S> {
                 $bloom {
                     bits: self.data.into_iter().collect(),
-                    num_hashes_minus_one: num_hashes - 1,
+                    num_hashes_minus_one: max(1, num_hashes) - 1,
                     hasher: self.hasher,
                 }
             }
@@ -357,10 +361,18 @@ mod for_accuracy_tests {
 
 #[cfg(test)]
 mod for_size_tests {
-    use crate::BloomFilter;
+    use crate::{AtomicBloomFilter, BloomFilter};
 
     #[test]
     fn test_size() {
         let _: BloomFilter = BloomFilter::new_with_false_pos(0.0001).expected_items(10000);
+    }
+
+    #[test]
+    fn test_zero_hashes() {
+        let bloom = BloomFilter::with_num_bits(512).hashes(0);
+        assert_eq!(bloom.num_hashes(), 1);
+        let bloom = AtomicBloomFilter::with_num_bits(512).hashes(0);
+        assert_eq!(bloom.num_hashes(), 1);
     }
 }
