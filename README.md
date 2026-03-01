@@ -12,12 +12,12 @@ fastbloom is a fast, flexible, and accurate Bloom filter implemented in Rust. fa
 
 ## Usage
 
-Due to a different (improved!) algorithm in 0.16.x, Bloomfilters have incompatible serialization/deserialization with prior versions.
+Due to a different (improved!) algorithm in 0.17.x, Bloomfilters have incompatible serialization/deserialization with prior versions.
 
 ```toml
 # Cargo.toml
 [dependencies]
-fastbloom = "0.16.0"
+fastbloom = "0.17.0"
 ```
 Basic usage:
 ```rust
