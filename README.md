@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=tomtomwombat&project=fastbloom&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # fastbloom
 [![Github](https://img.shields.io/badge/github-8da0cb?style=for-the-badge&labelColor=555555&logo=github)](https://github.com/tomtomwombat/fastbloom)
 [![Crates.io](https://img.shields.io/badge/crates.io-fc8d62?style=for-the-badge&labelColor=555555&logo=rust)](https://crates.io/crates/fastbloom)
