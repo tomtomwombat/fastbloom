@@ -5,6 +5,7 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use core::hash::{BuildHasher, Hash, Hasher};
 use core::iter::repeat;
 mod hasher;
@@ -54,7 +55,7 @@ macro_rules! impl_bloom {
         /// ```rust
         #[doc = concat!("use fastbloom::", stringify!($name), ";")]
         ///
-        #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).items([\"42\", \"🦀\"].iter());")]
+        #[doc = concat!("let filter = ", stringify!($name), "::with_false_pos(0.001).items::<&str, _>([\"42\", \"🦀\"]);")]
         /// assert!(filter.contains("42"));
         /// assert!(filter.contains("🦀"));
         /// ```
@@ -65,7 +66,7 @@ macro_rules! impl_bloom {
         ///
         #[doc = concat!("let filter = ", stringify!($name), "::with_num_bits(1024)")]
         ///     .hasher(RandomState::default())
-        ///     .items(["42", "🦀"].iter());
+        ///     .items::<&str, _>(["42", "🦀"]);
         /// ```
         #[derive(Debug, Clone)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -138,7 +139,7 @@ macro_rules! impl_bloom {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            #[doc = concat!("let orig = ", stringify!($name), "::with_false_pos(0.001).seed(&42).items([1, 2].iter());")]
+            #[doc = concat!("let orig = ", stringify!($name), "::with_false_pos(0.001).seed(&42).items::<i32, _>([1, 2]);")]
             /// let num_hashes = orig.num_hashes();
             #[doc = concat!("let new = ", stringify!($name), "::from_vec(orig.iter().collect()).seed(&42).hashes(num_hashes);")]
             ///
@@ -162,7 +163,7 @@ macro_rules! impl_bloom {
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($name), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($name), "::with_num_bits(1024).items([1, 2, 3].iter());")]
+            #[doc = concat!("let bloom = ", stringify!($name), "::with_num_bits(1024).items::<i32, _>([1, 2, 3]);")]
             /// assert!(bloom.contains(&1));
             /// ```
             #[inline]
@@ -271,9 +272,14 @@ macro_rules! impl_bloom {
 
             /// Inserts all the items in `iter` into the `self`.
             #[inline]
-            pub fn insert_all<'a, T: Hash + 'a, I: IntoIterator<Item = &'a T>>(&$($m)? self, iter: I) {
+            pub fn insert_all<T, I>(&$($m)? self, iter: I)
+            where
+                T: Hash + ?Sized,
+                I: IntoIterator,
+                I::Item: Borrow<T>,
+            {
                 for val in iter {
-                    self.insert(val);
+                    self.insert(val.borrow());
                 }
             }
 
@@ -583,18 +589,18 @@ macro_rules! impl_tests {
                     assert_eq!(
                         $name::new_builder(num_bits)
                             .seed(&seed)
-                            .items(sample_vals.iter()),
+                            .items::<u64, _>(sample_vals.iter()),
                         $name::new_builder(num_bits)
                             .seed(&seed)
-                            .items(sample_vals.iter())
+                            .items::<u64, _>(sample_vals.iter())
                     );
                     assert!(
                         !($name::new_builder(num_bits)
                             .seed(&(seed + 1))
-                            .items(sample_vals.iter())
+                            .items::<u64, _>(sample_vals.iter())
                             == $name::new_builder(num_bits)
                                 .seed(&seed)
-                                .items(sample_vals.iter()))
+                                .items::<u64, _>(sample_vals.iter()))
                     );
                 }
             }
