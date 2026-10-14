@@ -1,6 +1,6 @@
 use crate::{math::*, AtomicBloomFilter, BloomFilter, BuildHasher, DefaultHasher};
 use alloc::vec::Vec;
-use core::{cmp::max, f64::consts::LN_2, hash::Hash};
+use core::{borrow::Borrow, cmp::max, f64::consts::LN_2, hash::Hash};
 
 macro_rules! builder_with_bits {
     ($name:ident, $($m:ident)?, $bloom:ident) => {
@@ -109,21 +109,25 @@ macro_rules! builder_with_bits {
             /// all values in `items`. The number of hashes per item
             /// is optimized based on `items.len()` to maximize Bloom filter accuracy
             #[doc = concat!("(minimize false positives chance on [`", stringify!($bloom), "::contains`]).")]
+            /// If the `Borrow` target is ambiguous, specify it with `items::<T, _>(...)`.
             ///
             /// # Examples
             ///
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).items([1, 2, 3].iter());")]
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_num_bits(1024).items::<i32, _>([1, 2, 3]);")]
             /// ```
-            pub fn items<'a, H: Hash + 'a, I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = &'a H>>>(
-                self,
-                items: I,
-            ) -> $bloom<S> {
+            pub fn items<H, I>(self, items: I) -> $bloom<S>
+            where
+                H: Hash + ?Sized,
+                I: IntoIterator,
+                I::IntoIter: ExactSizeIterator,
+                <I::IntoIter as Iterator>::Item: Borrow<H>,
+            {
                 let into_iter = items.into_iter();
                 let $($m)? filter = self.expected_items(into_iter.len());
-                filter.insert_all(into_iter);
+                filter.insert_all::<H, _>(into_iter);
                 filter
             }
         }
@@ -220,21 +224,25 @@ macro_rules! builder_with_fp {
             #[doc = concat!("\"Consumes\" this builder and constructs a [`", stringify!($bloom), "`] containing")]
             /// all values in `items`. The number of hashes per item and underlying memory
             /// is optimized based on `items.len()` to meet the desired false positive rate.
+            /// If the `Borrow` target is ambiguous, specify it with `items::<T, _>(...)`.
             ///
             /// # Examples
             ///
             /// ```
             #[doc = concat!("use fastbloom::", stringify!($bloom), ";")]
             ///
-            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).items([1, 2, 3].iter());")]
+            #[doc = concat!("let bloom = ", stringify!($bloom), "::with_false_pos(0.001).items::<i32, _>([1, 2, 3]);")]
             /// ```
-            pub fn items<'a, H: Hash + 'a, I: IntoIterator<IntoIter = impl ExactSizeIterator<Item = &'a H>>>(
-                self,
-                items: I,
-            ) -> $bloom<S> {
+            pub fn items<H, I>(self, items: I) -> $bloom<S>
+            where
+                H: Hash + ?Sized,
+                I: IntoIterator,
+                I::IntoIter: ExactSizeIterator,
+                <I::IntoIter as Iterator>::Item: Borrow<H>,
+            {
                 let into_iter = items.into_iter();
                 let $($m)? filter = self.expected_items(into_iter.len());
-                filter.insert_all(into_iter);
+                filter.insert_all::<H, _>(into_iter);
                 filter
             }
         }
