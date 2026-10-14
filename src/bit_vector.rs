@@ -1,5 +1,7 @@
+#[cfg(feature = "atomic")]
 use crate::AtomicU64;
 use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "atomic")]
 use portable_atomic::Ordering::Relaxed;
 
 /// A bit vector partitioned in to `u64` blocks.
@@ -11,6 +13,7 @@ pub(crate) struct BitVec {
 
 /// A bit vector partitioned in to `u64` blocks.
 #[derive(Debug)]
+#[cfg(feature = "atomic")]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct AtomicBitVec {
     bits: Box<[AtomicU64]>,
@@ -67,6 +70,7 @@ macro_rules! impl_bitvec {
 }
 
 impl_bitvec!(BitVec, u64);
+#[cfg(feature = "atomic")]
 impl_bitvec!(AtomicBitVec, AtomicU64);
 
 impl BitVec {
@@ -112,6 +116,7 @@ impl BitVec {
     }
 }
 
+#[cfg(feature = "atomic")]
 impl AtomicBitVec {
     #[inline]
     fn new(x: u64) -> AtomicU64 {
@@ -155,6 +160,7 @@ impl AtomicBitVec {
     }
 }
 
+#[cfg(feature = "atomic")]
 impl Clone for AtomicBitVec {
     fn clone(&self) -> Self {
         self.iter().collect()
@@ -206,4 +212,5 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(non_atomic, BitVec);
+#[cfg(feature = "atomic")]
 impl_tests!(atomic, AtomicBitVec);

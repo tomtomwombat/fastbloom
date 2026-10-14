@@ -1,4 +1,6 @@
-use crate::{math::*, AtomicBloomFilter, BloomFilter, BuildHasher, DefaultHasher};
+#[cfg(feature = "atomic")]
+use crate::AtomicBloomFilter;
+use crate::{math::*, BloomFilter, BuildHasher, DefaultHasher};
 use alloc::vec::Vec;
 use core::{cmp::max, f64::consts::LN_2, hash::Hash};
 
@@ -131,6 +133,7 @@ macro_rules! builder_with_bits {
 }
 
 builder_with_bits!(BuilderWithBits, mut, BloomFilter);
+#[cfg(feature = "atomic")]
 builder_with_bits!(AtomicBuilderWithBits, , AtomicBloomFilter);
 
 macro_rules! builder_with_fp {
@@ -242,6 +245,7 @@ macro_rules! builder_with_fp {
 }
 
 builder_with_fp!(BuilderWithFalsePositiveRate, mut, BloomFilter);
+#[cfg(feature = "atomic")]
 builder_with_fp!(AtomicBuilderWithFalsePositiveRate, , AtomicBloomFilter);
 
 /// Returns the optimal (for false positive rate) number of hashes to perform for an item given the expected number of items in the bloom filter.
@@ -361,7 +365,9 @@ mod for_accuracy_tests {
 
 #[cfg(test)]
 mod for_size_tests {
-    use crate::{AtomicBloomFilter, BloomFilter};
+    #[cfg(feature = "atomic")]
+    use crate::AtomicBloomFilter;
+    use crate::BloomFilter;
 
     #[test]
     fn test_size() {
@@ -372,7 +378,10 @@ mod for_size_tests {
     fn test_zero_hashes() {
         let bloom = BloomFilter::with_num_bits(512).hashes(0);
         assert_eq!(bloom.num_hashes(), 1);
-        let bloom = AtomicBloomFilter::with_num_bits(512).hashes(0);
-        assert_eq!(bloom.num_hashes(), 1);
+        #[cfg(feature = "atomic")]
+        {
+            let bloom = AtomicBloomFilter::with_num_bits(512).hashes(0);
+            assert_eq!(bloom.num_hashes(), 1);
+        }
     }
 }

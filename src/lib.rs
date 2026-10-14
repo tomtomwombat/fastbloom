@@ -12,24 +12,28 @@ pub use hasher::DefaultHasher;
 use hasher::DoubleHasher;
 mod builder;
 pub use builder::{
-    expected_density, expected_false_pos, optimal_hashes, optimal_size, AtomicBuilderWithBits,
-    AtomicBuilderWithFalsePositiveRate, BuilderWithBits, BuilderWithFalsePositiveRate,
+    expected_density, expected_false_pos, optimal_hashes, optimal_size, BuilderWithBits,
+    BuilderWithFalsePositiveRate,
 };
+#[cfg(feature = "atomic")]
+pub use builder::{AtomicBuilderWithBits, AtomicBuilderWithFalsePositiveRate};
 mod bit_vector;
-use bit_vector::{AtomicBitVec, BitVec};
+#[cfg(feature = "atomic")]
+use bit_vector::AtomicBitVec;
+use bit_vector::BitVec;
 mod math;
 
-#[cfg(feature = "loom")]
+#[cfg(all(feature = "atomic", feature = "loom"))]
 pub(crate) use loom::sync::atomic::AtomicU64;
 
-#[cfg(not(feature = "loom"))]
+#[cfg(all(feature = "atomic", not(feature = "loom")))]
 pub(crate) use portable_atomic::AtomicU64;
 
 #[cfg(all(feature = "loom", feature = "serde"))]
 compile_error!("features `loom` and `serde` are mutually exclusive");
 
 macro_rules! impl_bloom {
-    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty, $ismut:literal, $($m:ident)?) => {
+    ($name:ident, $builder_bits:ident, $builder_fp:ident, $bitvec:ident, $bits:ty, $ismut:literal, $concurrency_doc:literal $(, $m:ident)?) => {
         /// A space efficient approximate membership set data structure.
         /// False positives from [`contains`](Self::contains) are possible, but false negatives
         /// are not, i.e. [`contains`](Self::contains) for all items in the set is guaranteed to return
@@ -40,6 +44,7 @@ macro_rules! impl_bloom {
         /// To check membership, a number of bits are checked at positions based on the item's hash in the underlying bit vector.
         ///
         /// Once constructed, neither the Bloom filter's underlying memory usage nor number of bits per item change.
+        #[doc = $concurrency_doc]
         ///
         /// # Examples
         /// Basic usage:
@@ -378,8 +383,10 @@ impl_bloom!(
     BitVec,
     u64,
     "mut ",
+    "",
     mut
 );
+#[cfg(feature = "atomic")]
 impl_bloom!(
     AtomicBloomFilter,
     AtomicBuilderWithBits,
@@ -387,6 +394,9 @@ impl_bloom!(
     AtomicBitVec,
     AtomicU64,
     "",
+    r#"
+Individual 64-bit words use relaxed atomics, so concurrent operations may interleave. Operations are data-race safe but do not provide atomic method calls or consistent multi-word snapshots. Use external synchronization when these guarantees are required.
+"#
 );
 
 /// Returns a the bit index for an item's hash.
@@ -737,9 +747,10 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(non_atomic, BloomFilter);
+#[cfg(feature = "atomic")]
 impl_tests!(atomic, AtomicBloomFilter);
 
-#[cfg(not(feature = "loom"))]
+#[cfg(all(feature = "atomic", not(feature = "loom")))]
 #[cfg(test)]
 mod atomic_parity_tests {
     #[cfg(feature = "serde")]

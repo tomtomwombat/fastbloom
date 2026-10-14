@@ -4,11 +4,11 @@
 [![docs.rs](https://img.shields.io/badge/docs.rs-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs)](https://docs.rs/fastbloom)
 ![Downloads](https://img.shields.io/crates/d/fastbloom?style=for-the-badge)
 
-The fastest Bloom filter in Rust. No accuracy compromises. Full concurrency support and compatible with any hasher.
+The fastest Bloom filter in Rust. No accuracy compromises. Compatible with any hasher.
 
 ## Overview
 
-fastbloom is a fast, flexible, and accurate Bloom filter implemented in Rust. fastbloom's default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. fastbloom is 2-20 times faster and magnitudes more accurate than existing Bloom filter implementations. fastbloom's `AtomicBloomFilter` is a concurrent Bloom filter that avoids lock contention.
+fastbloom is a fast, flexible, and accurate Bloom filter implemented in Rust. fastbloom's default hasher is SipHash-1-3 using randomized keys but can be seeded or configured to use any hasher. fastbloom is 2-20 times faster and magnitudes more accurate than existing Bloom filter implementations. With the `atomic` feature enabled, `AtomicBloomFilter` provides concurrent access without lock contention.
 
 ## Usage
 
@@ -44,8 +44,8 @@ let filter = BloomFilter::with_num_bits(1024)
     .hasher(RandomState::default())
     .items(["42", "🦀"].iter());
 ```
-Full concurrency support. `AtomicBloomFilter` is a drop-in replacement for `RwLock<OtherBloomFilter>` because all methods take `&self`:
-```rust
+Enable the `atomic` feature to use `AtomicBloomFilter`. Methods take `&self`, so it can be shared across threads without an external lock:
+```ignore
 use fastbloom::AtomicBloomFilter;
 
 let filter = AtomicBloomFilter::with_num_bits(1024).expected_items(2);
@@ -92,8 +92,9 @@ fastbloom does not compromise accuracy. Below is a comparison of false positive 
 ## Available Features
 
 - **`rand`** - Enabled by default, this has the `DefaultHasher` source its random state using `thread_rng()` instead of hardware sources. Getting entropy from a user-space source is considerably faster, but requires additional dependencies to achieve this. Disabling this feature by using `default-features = false` makes `DefaultHasher` source its entropy using `foldhash`, which will have a much simpler code footprint at the expense of speed.
+- **`atomic`** - Enables `AtomicBloomFilter` and its builders, using the optional `portable-atomic` dependency. Disabled by default.
 - **`serde`** - `BloomFilter`s implement `Serialize` and `Deserialize` when possible.
-- **`loom`** - `AtomicBloomFilter`s use [loom](https://github.com/tokio-rs/loom) atomics, making it compatible with loom testing.
+- **`loom`** - Enables `atomic` and uses [loom](https://github.com/tokio-rs/loom) atomics for model testing. Filter operations still have only per-word atomicity.
 
 ## References
 - [Bloom filter - Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
