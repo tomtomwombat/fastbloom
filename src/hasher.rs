@@ -67,7 +67,7 @@ impl Default for RandomDefaultHasher {
         #[cfg(feature = "rand")]
         {
             let mut seed = [0u8; 16];
-            use rand::RngCore;
+            use rand::Rng;
             rand::rng().fill_bytes(&mut seed);
             Self::seeded(&seed)
         }
